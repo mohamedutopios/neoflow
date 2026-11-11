@@ -1,0 +1,22 @@
+[project]
+name = "neoflow-lab-workflow"
+version = "0.9.0"
+description = "Lab J09 NSS+ : workflow LangGraph résilient, mémoire gouvernée, réindexation incrémentale"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-sqlite>=3.0,<4",
+    "langchain-anthropic>=1.4,<2",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"

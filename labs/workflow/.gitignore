@@ -1,0 +1,10 @@
+# État d'exécution local : checkpoints, effets, mémoire, journal, index simulé. Jamais versionné.
+.etat/
+.etat-kestra/
+plan.json
+rapport*.json
+*.db
+*.db-shm
+*.db-wal
+.venv/
+__pycache__/

@@ -1,0 +1,4 @@
+{"tours": [
+  [{"outil": "git_diff", "entree": {"stat": true}}],
+  [{"texte": "Étape 2 faite : un seul fichier nouveau (SousTypeConges.java), dans le paquet conges."}]
+]}

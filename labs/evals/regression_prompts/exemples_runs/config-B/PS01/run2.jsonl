@@ -1,0 +1,2 @@
+{"ts": "2026-11-04T20:37:13+00:00", "etape": "questions", "modele": "simule:claude-opus-5-5", "offline": true, "stop_reason": "end_turn", "usage": {"input_tokens": 2761, "output_tokens": 1622, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}}
+{"ts": "2026-11-04T20:37:13+00:00", "etape": "generation", "modele": "simule:claude-sonnet-5-5", "offline": true, "stop_reason": "end_turn", "usage": {"input_tokens": 5686, "output_tokens": 21384, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}}

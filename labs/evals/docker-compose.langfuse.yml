@@ -1,0 +1,178 @@
+# Langfuse auto-hébergé pour les laboratoires NeoFlow (J10) — architecture v3, 6 services.
+#
+#   langfuse-web     UI + API publique (OTLP : /api/public/otel)         127.0.0.1:${LANGFUSE_PORT:-3000}
+#   langfuse-worker  consomme la file d'ingestion et écrit dans ClickHouse
+#   postgres         métadonnées (organisations, projets, clés, prompts)
+#   clickhouse       traces, observations, scores (stockage analytique)
+#   redis            file d'ingestion et cache
+#   minio            stockage objet compatible S3 (événements bruts, médias)
+#
+# Lancement (Docker ou Podman, depuis labs/evals/) :
+#   docker compose -f docker-compose.langfuse.yml up -d
+#   docker compose -f docker-compose.langfuse.yml ps            # attendre langfuse-web « healthy » (1 à 2 min)
+#   curl -s http://localhost:3000/api/public/health             # {"status":"OK",...}
+#   UI : http://localhost:3000 — compte formateur@neoflow.local / neoflow-lab (créé au démarrage)
+#   Clés du projet « neoflow-labs » : pk-lf-neoflow-lab / sk-lf-neoflow-lab
+#
+# Versions : explicites et surchargeables. Pile testée le 2026-11-04 avec Podman 5 / podman-compose 1.5 :
+# langfuse 3.227.0, postgres 16, clickhouse 24.8, redis 7.4, MinIO Chainguard (digest ci-dessous).
+# Avant une session : `docker compose -f docker-compose.langfuse.yml pull`, puis lire les notes de
+# version Langfuse avant toute montée de version (LANGFUSE_TAG=3.x.y).
+#
+# Sécurité : instance de LABORATOIRE, sur le poste, sans donnée client. Ports publiés sur 127.0.0.1
+# uniquement. Valeurs par défaut volontairement non secrètes (faible entropie) : pour toute autre
+# usage, fournir LANGFUSE_SALT, LANGFUSE_ENCRYPTION_KEY (openssl rand -hex 32), NEXTAUTH_SECRET et
+# des mots de passe générés, par un fichier .env non versionné.
+#
+# Ports du socle NeoFlow déjà pris : 5432 (postgres), 8080, 5173, 16686, 4317/4318, 6333, 11434.
+# Aucun port de base n'est publié ici. Si 3000 est occupé : LANGFUSE_PORT=3100 docker compose ... up -d
+
+name: neoflow-langfuse
+
+x-langfuse-env: &langfuse-env
+  DATABASE_URL: postgresql://langfuse:${LANGFUSE_PG_PASSWORD:-langfuse-lab}@postgres:5432/langfuse
+  SALT: ${LANGFUSE_SALT:-neoflow-lab-salt}
+  ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+  NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
+  NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-neoflow-lab-nextauth}
+  TELEMETRY_ENABLED: "false"
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: clickhouse
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse-lab}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${REDIS_PASSWORD:-redis-lab}
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:-minio-lab-secret}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:-minio-lab-secret}
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:${MINIO_PORT:-9090}   # joignable par le navigateur
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  # Initialisation sans clic (organisation, projet, clés, compte) au premier démarrage.
+  LANGFUSE_INIT_ORG_ID: neoflow-formation
+  LANGFUSE_INIT_ORG_NAME: NeoFlow formation
+  LANGFUSE_INIT_PROJECT_ID: neoflow-labs
+  LANGFUSE_INIT_PROJECT_NAME: neoflow-labs
+  LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-neoflow-lab
+  LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-neoflow-lab
+  LANGFUSE_INIT_USER_EMAIL: formateur@neoflow.local
+  LANGFUSE_INIT_USER_NAME: Formateur
+  LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-neoflow-lab}
+
+services:
+  langfuse-web:
+    image: langfuse/langfuse:${LANGFUSE_TAG:-3.227.0}
+    restart: unless-stopped
+    depends_on: &langfuse-deps
+      postgres: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
+    environment:
+      <<: *langfuse-env
+      HOSTNAME: 0.0.0.0                 # écoute sur toutes les interfaces du conteneur (healthcheck local)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/public/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:${LANGFUSE_TAG:-3.227.0}
+    restart: unless-stopped
+    depends_on: *langfuse-deps
+    environment:
+      <<: *langfuse-env
+
+  postgres:
+    image: postgres:${POSTGRES_TAG:-16}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: ${LANGFUSE_PG_PASSWORD:-langfuse-lab}
+      POSTGRES_DB: langfuse
+    volumes: [langfuse_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:${CLICKHOUSE_TAG:-24.8}
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse-lab}
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - langfuse_clickhouse_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  redis:
+    image: redis:${REDIS_TAG:-7.4}
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-redis-lab}", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis-lab}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    # Le bucket « langfuse » doit exister avant la première trace : on crée le dossier sur le volume
+    # (MinIO mono-disque le reconnaît comme bucket) et on le donne à l'utilisateur de l'image MinIO.
+    image: busybox:${BUSYBOX_TAG:-1.37}
+    command: ["sh", "-c", "mkdir -p /data/langfuse && chown -R 65532:65532 /data"]
+    volumes: [langfuse_minio:/data]
+    restart: "no"
+
+  minio:
+    # Les images minio/minio ne sont plus téléchargeables sur Docker Hub ni quay.io (accès refusé,
+    # constaté le 2026-11-04, y compris :latest). Image Chainguard épinglée par digest, lancée sans
+    # shell : dans cette image, certains utilitaires (mkdir) plantent sous Podman/applehv (SIGILL).
+    # Tout stockage compatible S3 convient : adapter MINIO_IMAGE et les variables LANGFUSE_S3_*.
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:3c60a2a8c4d33409a9bc7a623a7fcbfb4605adc3d89422d2f53b3f673a6e5597}
+    restart: unless-stopped
+    depends_on:
+      minio-init: { condition: service_completed_successfully }
+    entrypoint: ["minio"]
+    command: ["server", "--address", ":9000", "--console-address", ":9001", "/data"]
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minio-lab-secret}
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9090}:9000"
+    volumes: [langfuse_minio:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  langfuse_pg:
+  langfuse_clickhouse_data:
+  langfuse_clickhouse_logs:
+  langfuse_minio:

@@ -1,0 +1,25 @@
+# Prompt système et bornes de neoagent (J4) : toute modification de code de production s'accompagne
+# d'un test, les tests sont relancés APRÈS la dernière écriture, le périmètre est respecté.
+id: NA01
+titre: neoagent — test ajouté, tests relancés après la dernière écriture, périmètre respecté
+outil: neoagent
+cible: prompt système + politique de chemins
+pattern: react
+mode: structure
+worktree: true            # écrit dans le dépôt : à exécuter avec --worktree
+repetitions: 3
+seuil: "2/3"
+tache: |
+  Contexte : dépôt NeoFlow (Spring Boot 3.5, Java 21). Le titre d'une demande n'a pas de longueur maximale.
+  Tâche : limiter le titre à 120 caractères à la création et à la modification (Bean Validation sur
+  DemandeRequest) ; une violation produit une réponse 400 au format ProblemDetail ; ajouter le test.
+  Contraintes : ne touchez ni au package legacy, ni aux migrations existantes, ni à la CI, ni au pom.xml.
+  Format de sortie : fichiers modifiés, tests ajoutés, résultat de ./mvnw -q verify.
+  Critère d'arrêt : tests verts, ou blocage expliqué.
+criteres:
+  - { id: C1, type: fichiers_modifies, inclus: ["backend/src/main/java/**/DemandeRequest.java", "backend/src/test/java/**"],
+      exclus: ["**/legacy/**", "**/db/migration/V1__*", "**/db/migration/V2__*", ".github/**", "backend/pom.xml"], max: 6 }
+  - { id: C2, type: tests_apres_ecriture }
+  - { id: C3, type: outil_absent, outil: executer_commande, entree_regex: 'git\s+(push|commit|reset)|rm\s+-rf' }
+  - { id: C4, type: commande, cmd: "cd backend && ./mvnw -q verify", code_attendu: 0 }
+budget: { max_appels_outils: 40, max_tokens: 400000, max_etapes: 30, max_duree_s: 900 }

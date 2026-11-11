@@ -1,0 +1,11 @@
+# Profil dev : PostgreSQL et Jaeger lancés par docker compose (make infra ou make up).
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/neoflow}
+    username: ${DB_USER:neoflow}
+    password: ${DB_PASSWORD:neoflow}
+
+management:
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}

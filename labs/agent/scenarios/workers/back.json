@@ -1,0 +1,12 @@
+{
+  "description": "Worker back (démo 3, TP 3) : crée SousTypeConges dans son worktree ; sa tentative d'écrire côté front est refusée (périmètre).",
+  "tours": [
+    [{"texte": "Je crée l'énumération des sous-types."},
+     {"outil": "editer_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/conges/SousTypeConges.java",
+       "nouveau": "package com.neosoft.neoflow.conges;\n\n/** Sous-types de congés (H-01). */\npublic enum SousTypeConges {\n    CP,\n    RTT,\n    SANS_SOLDE\n}\n"}}],
+    [{"texte": "J'ajoute aussi le type côté front pour gagner du temps."},
+     {"outil": "editer_fichier", "entree": {"chemin": "frontend/src/api/sousType.ts", "nouveau": "export type SousTypeConges = 'CP';\n"}}],
+    [{"outil": "git_diff", "entree": {"stat": true}}],
+    [{"texte": "Voie back : SousTypeConges créé. L'écriture côté front a été refusée (hors de mon périmètre) : elle relève du worker front."}]
+  ]
+}

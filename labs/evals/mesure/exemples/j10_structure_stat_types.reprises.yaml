@@ -1,0 +1,17 @@
+# Journal humain de la tâche rejouée en J10 (exemple fictif, stagiaire-07) : tenu PENDANT la tâche.
+tache: "J10 — GET /api/demandes/statistiques/types (par type), avec tests — neoagent --mode structure"
+participant: stagiaire-07
+variante: CONGES
+configuration: "neoagent 1.4 (J4), pattern generator_verifier, approbation humaine des écritures, outils de base"
+debut: "2026-11-04T11:14:00+01:00"     # lecture de la spec STAT-TYPES (rédigée avec labs/spec, 6 min, comptées à part)
+fin: "2026-11-04T11:41:00+01:00"       # PR ouverte, CI verte
+reprises:
+  - { type: approbation, duree_min: 5, cause: "Six demandes d'écriture lues et approuvées (diff résumé de chaque fichier)" }
+  - { type: revue_humaine, duree_min: 7, cause: "Lecture du diff complet et du verdict de l'évaluateur avant la PR" }
+  - { type: relance_prompt, duree_min: 2, cause: "Nom de méthode aligné sur la convention du repository (compterParType)" }
+defauts:
+  - { id: D1, description: "Types sans demande absents (EnumMap non complété)", detecte_par: verificateur_maven, severite: majeur, phase: avant_pr }
+couverture: { avant: 74.8, apres: 75.3 }
+notes: >
+  La spec a été rédigée avec l'assistant du J3 (6 min, hors chrono). Le patron par statut du J1 existait dans
+  le dépôt : biais de tâche non équivalente à déclarer.

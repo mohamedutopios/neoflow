@@ -1,0 +1,31 @@
+# Porte déterministe des spécifications (J03) — à copier dans .github/workflows/specs.yml.
+# Aucune clé d'API, aucun modèle : seulement les contrôles reproductibles de neospec
+# (parseur Gherkin, validateur OpenAPI, traçabilité). L'approbation reste humaine.
+name: specs
+
+on:
+  pull_request:
+    paths:
+      - 'docs/specs/**'
+      - 'docs/adr/**'
+      - 'labs/spec/**'
+
+permissions:
+  contents: read
+
+jobs:
+  valider-specs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Tests du lab (hors ligne)
+        run: uv run --project labs/spec pytest labs/spec
+      - name: Valider chaque spécification présente
+        run: |
+          set -e
+          for spec in docs/specs/*.md; do
+            type=$(basename "$spec" .md)
+            case "$type" in *[!A-Z_]*) continue ;; esac   # ignore README.md
+            uv run --project labs/spec neospec valider --type "$type" --racine .
+          done

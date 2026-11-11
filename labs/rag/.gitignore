@@ -1,0 +1,5 @@
+.rag_index*/
+.venv/
+__pycache__/
+*.pyc
+resultats/

@@ -1,0 +1,6 @@
+[
+  {"nom": "conges-back", "consigne": "Voie back CONGES : créez l'énumération SousTypeConges (CP, RTT, SANS_SOLDE) dans le paquet conges (ADR-003).",
+   "perimetre": ["backend/*"], "script": "back.json"},
+  {"nom": "conges-front", "consigne": "Voie front CONGES : créez les types de l'API conges dans frontend/src/api/conges.ts d'après le contrat.",
+   "perimetre": ["frontend/*"], "script": "front.json"}
+]

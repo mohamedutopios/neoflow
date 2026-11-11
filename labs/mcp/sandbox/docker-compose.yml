@@ -1,0 +1,64 @@
+# Sandbox J06 : l'agent et ses serveurs MCP dans un conteneur qui ne voit QUE le dépôt et ne sort
+# QUE vers l'API Anthropic.
+#
+#   cd labs/mcp/sandbox
+#   docker compose build
+#   docker compose run --rm agent                                   # scénario hors ligne (défaut)
+#   docker compose run --rm agent uv run --no-sync --project labs/mcp python labs/mcp/agent_mcp.py outils
+#   ANTHROPIC_API_KEY=... docker compose run --rm -e ANTHROPIC_API_KEY agent <commande de votre agent>
+#   docker compose logs egress                                      # destinations acceptées / refusées
+#
+# Le réseau « interne » n'a pas de route vers Internet : le seul chemin sortant est le proxy
+# « egress », qui n'autorise que les destinations de egress/squid.conf.
+name: neoflow-sandbox
+
+services:
+  egress:
+    build: ./egress
+    networks: [interne, sortie]
+    read_only: true
+    tmpfs:
+      - /var/run/squid:mode=1777
+      - /var/cache/squid:mode=1777
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ../../..
+      dockerfile: labs/mcp/sandbox/Dockerfile
+      args:
+        UID: "${SANDBOX_UID:-1000}"
+        GID: "${SANDBOX_GID:-1000}"
+    depends_on: [egress]
+    networks: [interne]
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      # Clé transmise seulement si elle est exportée dans le shell (mode réel) ; inutile en --offline.
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      HTTPS_PROXY: "http://egress:3128"
+      HTTP_PROXY: "http://egress:3128"
+      NO_PROXY: "localhost,127.0.0.1"
+      USER: "${USER:-stagiaire}"
+    volumes:
+      # Le dépôt, et rien d'autre : ni ~/.ssh, ni ~/.aws, ni la configuration des assistants de l'hôte.
+      - ../../..:/workspace
+      # Facultatif : masquer un .env local du dépôt (crée un .env vide côté hôte s'il n'existe pas).
+      # - /dev/null:/workspace/.env:ro
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+      - /home/agent:uid=${SANDBOX_UID:-1000},gid=${SANDBOX_GID:-1000},mode=0700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    mem_limit: 4g
+    cpus: 2.0
+
+networks:
+  interne:
+    internal: true
+  sortie: {}

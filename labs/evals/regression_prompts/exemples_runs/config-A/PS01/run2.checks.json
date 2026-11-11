@@ -1,0 +1,42 @@
+{
+  "racine": "/tmp/rr-PS01/wt",
+  "fichiers_git": [
+    "backend/src/test/java/com/neosoft/neoflow/acceptance/conges/CongesSteps.java",
+    "docs/adr/ADR-001-debit-solde-conges.md",
+    "docs/specs/CONGES.md",
+    "docs/specs/conges/MATRICE_TRACABILITE.md",
+    "docs/specs/conges/PLAN_TACHES.md",
+    "docs/specs/conges/features/conges_chevauchement.feature",
+    "docs/specs/conges/features/conges_decompte.feature",
+    "docs/specs/conges/features/conges_formulaire.feature",
+    "docs/specs/conges/features/conges_preavis.feature",
+    "docs/specs/conges/features/conges_saisie.feature",
+    "docs/specs/conges/features/conges_solde.feature",
+    "docs/specs/conges/neospec/decisions.json",
+    "docs/specs/conges/neospec/generation.json",
+    "docs/specs/conges/neospec/questions.json",
+    "docs/specs/conges/openapi/conges-delta.yaml"
+  ],
+  "code_retour": 0,
+  "controles": {
+    "C4": {
+      "cmd": "uv run --project labs/spec neospec valider --type CONGES --racine .",
+      "code": 0,
+      "extrait": "API valide, 7 opération(s), 19 exigence(s) citée(s)\n  ✔ ADR liés : ADR-001-debit-solde-conges.md\n\n0 erreur(s), 0 avertissement(s).\nPorte déterministe franchie : la relecture humaine peut commencer.\nwarning: `VIRTUAL_ENV=/opt/python-3.12` does not match the project environment path `labs/spec/.venv` and will be ignored; use `--active` to target the active environment instead\n"
+    },
+    "C5": {
+      "cmd": "grep -qE 'EF-0[1-5]' docs/specs/CONGES.md && grep -q 'EN REVUE' docs/specs/CONGES.md",
+      "code": 0,
+      "extrait": ""
+    }
+  },
+  "commande": [
+    "uv",
+    "run",
+    "--project",
+    "labs/spec",
+    "neospec",
+    "chaine",
+    "…"
+  ]
+}

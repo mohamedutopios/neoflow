@@ -1,0 +1,35 @@
+[project]
+name = "neoflow-lab-spec"
+version = "1.0.0"
+description = "Lab J03 NSS+ : assistant de spécification NeoFlow (ticket → questions → arbitrage humain → exigences, Gherkin, delta OpenAPI → validation → steps Cucumber-JVM)"
+requires-python = ">=3.11"
+dependencies = [
+    # SDK 2.x : API version 2026-10-21 (aucun paramètre d'échantillonnage envoyé par ce lab).
+    "anthropic>=2.0,<3",
+    "gherkin-official>=42,<43",
+    "openapi-spec-validator>=0.9,<0.10",
+    "jsonschema>=4.23,<5",
+    "referencing>=0.36,<1",
+    "pyyaml>=6,<7",
+]
+
+[project.scripts]
+neospec = "neospec.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.25,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neospec"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q -p no:cacheprovider"

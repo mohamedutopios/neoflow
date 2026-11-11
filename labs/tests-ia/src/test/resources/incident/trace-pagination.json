@@ -1,0 +1,567 @@
+{
+  "data": [
+    {
+      "traceID": "8db2ec6fcd2f11576e53175f17013220",
+      "spans": [
+        {
+          "traceID": "8db2ec6fcd2f11576e53175f17013220",
+          "spanID": "043e01cc76d06fd5",
+          "operationName": "http get /api/demandes",
+          "references": [],
+          "startTime": 1793821537637923,
+          "duration": 90256,
+          "tags": [
+            {
+              "key": "exception",
+              "type": "string",
+              "value": "none"
+            },
+            {
+              "key": "http.url",
+              "type": "string",
+              "value": "/api/demandes"
+            },
+            {
+              "key": "method",
+              "type": "string",
+              "value": "GET"
+            },
+            {
+              "key": "outcome",
+              "type": "string",
+              "value": "SUCCESS"
+            },
+            {
+              "key": "status",
+              "type": "string",
+              "value": "200"
+            },
+            {
+              "key": "uri",
+              "type": "string",
+              "value": "/api/demandes"
+            },
+            {
+              "key": "span.kind",
+              "type": "string",
+              "value": "server"
+            },
+            {
+              "key": "otel.scope.name",
+              "type": "string",
+              "value": "org.springframework.boot"
+            }
+          ],
+          "logs": [],
+          "processID": "p1",
+          "warnings": null,
+          "flags": 1
+        },
+        {
+          "traceID": "8db2ec6fcd2f11576e53175f17013220",
+          "spanID": "8a3e5b23825a6a7a",
+          "operationName": "security filterchain before",
+          "references": [
+            {
+              "refType": "CHILD_OF",
+              "traceID": "8db2ec6fcd2f11576e53175f17013220",
+              "spanID": "043e01cc76d06fd5"
+            }
+          ],
+          "startTime": 1793821537638405,
+          "duration": 85750,
+          "tags": [
+            {
+              "key": "spring.security.filterchain.position",
+              "type": "string",
+              "value": "12"
+            },
+            {
+              "key": "spring.security.filterchain.size",
+              "type": "string",
+              "value": "12"
+            },
+            {
+              "key": "spring.security.reached.filter.name",
+              "type": "string",
+              "value": "AuthorizationFilter"
+            },
+            {
+              "key": "spring.security.reached.filter.section",
+              "type": "string",
+              "value": "before"
+            },
+            {
+              "key": "span.kind",
+              "type": "string",
+              "value": "internal"
+            },
+            {
+              "key": "otel.scope.name",
+              "type": "string",
+              "value": "org.springframework.boot"
+            }
+          ],
+          "logs": [
+            {
+              "timestamp": 1793821537638000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before DisableEncodeUrlFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537638000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before WebAsyncManagerIntegrationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537638000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before SecurityContextHolderFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537638000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before HeaderWriterFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537638000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before LogoutFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537638000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before BasicAuthenticationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537723000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before RequestCacheAwareFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537723000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before SecurityContextHolderAwareRequestFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537723000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before AnonymousAuthenticationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537723000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before SessionManagementFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537723000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before ExceptionTranslationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537723000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "before AuthorizationFilter"
+                }
+              ]
+            }
+          ],
+          "processID": "p1",
+          "warnings": null,
+          "flags": 1
+        },
+        {
+          "traceID": "8db2ec6fcd2f11576e53175f17013220",
+          "spanID": "aea258e741c07cce",
+          "operationName": "authenticate usernamepassword",
+          "references": [
+            {
+              "refType": "CHILD_OF",
+              "traceID": "8db2ec6fcd2f11576e53175f17013220",
+              "spanID": "8a3e5b23825a6a7a"
+            }
+          ],
+          "startTime": 1793821537638713,
+          "duration": 85127,
+          "tags": [
+            {
+              "key": "authentication.failure.type",
+              "type": "string",
+              "value": "n/a"
+            },
+            {
+              "key": "authentication.method",
+              "type": "string",
+              "value": "ProviderManager"
+            },
+            {
+              "key": "authentication.request.type",
+              "type": "string",
+              "value": "UsernamePasswordAuthenticationToken"
+            },
+            {
+              "key": "authentication.result.type",
+              "type": "string",
+              "value": "UsernamePasswordAuthenticationToken"
+            },
+            {
+              "key": "span.kind",
+              "type": "string",
+              "value": "internal"
+            },
+            {
+              "key": "otel.scope.name",
+              "type": "string",
+              "value": "org.springframework.boot"
+            }
+          ],
+          "logs": [],
+          "processID": "p1",
+          "warnings": null,
+          "flags": 1
+        },
+        {
+          "traceID": "8db2ec6fcd2f11576e53175f17013220",
+          "spanID": "ceedd17eea340689",
+          "operationName": "authorize request",
+          "references": [
+            {
+              "refType": "CHILD_OF",
+              "traceID": "8db2ec6fcd2f11576e53175f17013220",
+              "spanID": "8a3e5b23825a6a7a"
+            }
+          ],
+          "startTime": 1793821537723971,
+          "duration": 136,
+          "tags": [
+            {
+              "key": "spring.security.authentication.authorities",
+              "type": "string",
+              "value": "[ROLE_VALIDEUR]"
+            },
+            {
+              "key": "spring.security.authentication.type",
+              "type": "string",
+              "value": "UsernamePasswordAuthenticationToken"
+            },
+            {
+              "key": "spring.security.authorization.decision",
+              "type": "string",
+              "value": "true"
+            },
+            {
+              "key": "spring.security.authorization.decision.details",
+              "type": "string",
+              "value": "AuthorizationDecision [granted=true]"
+            },
+            {
+              "key": "spring.security.object",
+              "type": "string",
+              "value": "request"
+            },
+            {
+              "key": "span.kind",
+              "type": "string",
+              "value": "internal"
+            },
+            {
+              "key": "otel.scope.name",
+              "type": "string",
+              "value": "org.springframework.boot"
+            }
+          ],
+          "logs": [],
+          "processID": "p1",
+          "warnings": null,
+          "flags": 1
+        },
+        {
+          "traceID": "8db2ec6fcd2f11576e53175f17013220",
+          "spanID": "467633bca145b6c0",
+          "operationName": "secured request",
+          "references": [
+            {
+              "refType": "CHILD_OF",
+              "traceID": "8db2ec6fcd2f11576e53175f17013220",
+              "spanID": "043e01cc76d06fd5"
+            }
+          ],
+          "startTime": 1793821537724170,
+          "duration": 3821,
+          "tags": [
+            {
+              "key": "span.kind",
+              "type": "string",
+              "value": "internal"
+            },
+            {
+              "key": "otel.scope.name",
+              "type": "string",
+              "value": "org.springframework.boot"
+            }
+          ],
+          "logs": [],
+          "processID": "p1",
+          "warnings": null,
+          "flags": 1
+        },
+        {
+          "traceID": "8db2ec6fcd2f11576e53175f17013220",
+          "spanID": "6672379c54868555",
+          "operationName": "security filterchain after",
+          "references": [
+            {
+              "refType": "CHILD_OF",
+              "traceID": "8db2ec6fcd2f11576e53175f17013220",
+              "spanID": "043e01cc76d06fd5"
+            }
+          ],
+          "startTime": 1793821537728028,
+          "duration": 98,
+          "tags": [
+            {
+              "key": "spring.security.filterchain.position",
+              "type": "string",
+              "value": "12"
+            },
+            {
+              "key": "spring.security.filterchain.size",
+              "type": "string",
+              "value": "12"
+            },
+            {
+              "key": "spring.security.reached.filter.name",
+              "type": "string",
+              "value": "DisableEncodeUrlFilter"
+            },
+            {
+              "key": "spring.security.reached.filter.section",
+              "type": "string",
+              "value": "after"
+            },
+            {
+              "key": "span.kind",
+              "type": "string",
+              "value": "internal"
+            },
+            {
+              "key": "otel.scope.name",
+              "type": "string",
+              "value": "org.springframework.boot"
+            }
+          ],
+          "logs": [
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after AuthorizationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after ExceptionTranslationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after SessionManagementFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after AnonymousAuthenticationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after SecurityContextHolderAwareRequestFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after RequestCacheAwareFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after BasicAuthenticationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after LogoutFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after HeaderWriterFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after SecurityContextHolderFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after WebAsyncManagerIntegrationFilter"
+                }
+              ]
+            },
+            {
+              "timestamp": 1793821537728000,
+              "fields": [
+                {
+                  "key": "event",
+                  "type": "string",
+                  "value": "after DisableEncodeUrlFilter"
+                }
+              ]
+            }
+          ],
+          "processID": "p1",
+          "warnings": null,
+          "flags": 1
+        }
+      ],
+      "processes": {
+        "p1": {
+          "serviceName": "neoflow-backend",
+          "tags": [
+            {
+              "key": "telemetry.sdk.language",
+              "type": "string",
+              "value": "java"
+            },
+            {
+              "key": "telemetry.sdk.name",
+              "type": "string",
+              "value": "opentelemetry"
+            },
+            {
+              "key": "telemetry.sdk.version",
+              "type": "string",
+              "value": "1.49.0"
+            }
+          ]
+        }
+      },
+      "warnings": null
+    }
+  ],
+  "total": 0,
+  "limit": 0,
+  "offset": 0,
+  "errors": null
+}

@@ -1,0 +1,63 @@
+# Configuration commune à tous les profils.
+# Profils : dev (PostgreSQL docker, profil par défaut), dev-h2 (H2 en mémoire, sans Docker), test (H2, tests).
+spring:
+  application:
+    name: neoflow-backend
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration
+  jackson:
+    time-zone: Europe/Paris
+
+server:
+  port: 8080
+
+neoflow:
+  securite:
+    utilisateurs:
+      - login: alice
+        mot-de-passe: "{noop}neoflow"
+        roles: [DEMANDEUR]
+      - login: bob
+        mot-de-passe: "{noop}neoflow"
+        roles: [VALIDEUR]
+      - login: admin
+        mot-de-passe: "{noop}neoflow"
+        roles: [ADMIN]
+  notification:
+    actif: false
+    url: https://notifications.neoflow-velmora.example/api/v1/messages
+    api-key: nfk_7Qm2xV9pL4tR8sW1zB6nK3yH5jD0cF2aG8eU
+    expediteur: neoflow-noreply@velmora.example
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    env:
+      show-values: always
+    configprops:
+      show-values: always
+  tracing:
+    sampling:
+      probability: 1.0
+
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    com.neosoft.neoflow: INFO
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

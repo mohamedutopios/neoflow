@@ -1,0 +1,7 @@
+[
+  {"name": "ci", "event": "pull_request", "conclusion": "failure", "createdAt": "2026-11-04T10:44:12Z"},
+  {"name": "securite", "event": "pull_request", "conclusion": "success", "createdAt": "2026-11-04T10:44:13Z"},
+  {"name": "ci", "event": "pull_request", "conclusion": "success", "createdAt": "2026-11-04T10:58:40Z"},
+  {"name": "securite", "event": "pull_request", "conclusion": "success", "createdAt": "2026-11-04T10:58:41Z"},
+  {"name": "revue-ia", "event": "pull_request", "conclusion": "success", "createdAt": "2026-11-04T10:58:42Z"}
+]

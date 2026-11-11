@@ -1,0 +1,6 @@
+{"tours": [
+  [{"texte": "Étape 1 : je crée l'énumération."},
+   {"outil": "editer_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/conges/SousTypeConges.java",
+     "nouveau": "package com.neosoft.neoflow.conges;\n\n/** Sous-types de congés (H-01). CP et RTT sont soumis au solde. */\npublic enum SousTypeConges {\n    CP,\n    RTT,\n    SANS_SOLDE\n}\n"}}],
+  [{"texte": "Étape 1 faite : SousTypeConges créé."}]
+]}

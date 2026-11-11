@@ -1,0 +1,23 @@
+{
+  "racine": "/tmp/rr-NA06-3/wt",
+  "fichiers_git": [
+    "backend/src/test/java/com/neosoft/neoflow/demande/DemandeStatistiquesTypesIT.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/NombreParType.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/DemandeRepository.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/DemandeStatistiquesService.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/DemandeStatistiquesController.java"
+  ],
+  "controles": {
+    "C4": {
+      "cmd": "grep -rq 'statistiques/types' backend/src/main/java",
+      "code": 0,
+      "extrait": ""
+    },
+    "C5": {
+      "cmd": "cd backend && ./mvnw -q verify",
+      "code": 0,
+      "extrait": "code de sortie 0\n[INFO] Tests run: 45, Failures: 0, Errors: 0, Skipped: 0\n[INFO] BUILD SUCCESS"
+    }
+  },
+  "code_retour": 0
+}

@@ -1,0 +1,96 @@
+# NeoFlow : stack de développement.
+#   make up                                 postgres, jaeger, backend, frontend
+#   make infra                              postgres et jaeger seuls (backend et frontend lancés en local)
+#   docker compose --profile ia up -d       + qdrant et ollama (laboratoires RAG J05, MCP J06)
+#   Profil obs (Langfuse, J10) : défini dans labs/evals/docker-compose.langfuse.yml
+#     docker compose -f docker-compose.yml -f labs/evals/docker-compose.langfuse.yml --profile obs up -d
+name: neoflow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: neoflow
+      POSTGRES_USER: ${DB_USER:-neoflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-neoflow}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER:-neoflow}", "-d", "neoflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Jaeger v2 (all-in-one, stockage en mémoire) : OTLP gRPC 4317, OTLP HTTP 4318, interface 16686
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/neoflow
+      DB_USER: ${DB_USER:-neoflow}
+      DB_PASSWORD: ${DB_PASSWORD:-neoflow}
+      OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      TZ: Europe/Paris
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # --- Profil ia : laboratoires RAG (J05) et MCP (J06) ---
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    profiles: ["ia"]
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  ollama:
+    image: ollama/ollama:0.40.14
+    profiles: ["ia"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # Téléchargement unique du modèle d'embeddings (conservé dans le volume ollama-data)
+  ollama-modeles:
+    image: ollama/ollama:0.40.14
+    profiles: ["ia"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    command: ["pull", "${OLLAMA_EMBED_MODEL:-nomic-embed-text}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres-data:
+  qdrant-data:
+  ollama-data:

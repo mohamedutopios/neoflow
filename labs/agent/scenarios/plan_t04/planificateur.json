@@ -1,0 +1,10 @@
+{
+  "description": "Démo 1 : le planificateur (lecture seule) lit le plan J03 et propose un plan d'exécution JSON.",
+  "tours": [
+    [{"texte": "Je lis le plan technique validé en J3."},
+     {"outil": "chercher", "entree": {"motif": "^\\| T0[34] ", "chemin": "docs/specs"}}],
+    [{"texte": "Je regarde le paquet cible."},
+     {"outil": "lister", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow", "profondeur": 1}}],
+    [{"texte": "Plan d'exécution proposé pour une première tranche de T03 (ADR-003), vérifiable seule :\n[{\"etape\": \"Créer l'énumération SousTypeConges (CP, RTT, SANS_SOLDE)\", \"fichiers\": [\"backend/src/main/java/com/neosoft/neoflow/conges/SousTypeConges.java\"], \"verification\": \"./mvnw -q compile\"}, {\"etape\": \"Contrôler le diff : un seul fichier nouveau, rien hors du paquet conges\", \"fichiers\": [], \"verification\": \"git diff --stat\"}]"}]
+  ]
+}

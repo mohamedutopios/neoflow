@@ -1,0 +1,21 @@
+# Pattern Generator–Verifier (J4) : Maven est le vérificateur. Un échec de vérification doit être
+# suivi d'une correction puis d'une nouvelle vérification, et la dernière vérification est verte.
+id: NA04
+titre: neoagent — Generator–Verifier, la vérification Maven boucle jusqu'au vert
+outil: neoagent
+cible: patterns/generator_verifier.py
+pattern: generator_verifier
+mode: structure
+worktree: true
+repetitions: 3
+seuil: "2/3"
+tache: |
+  Contexte : dépôt NeoFlow. Tâche : la méthode RegleGenerique.verifier doit refuser une dateFin antérieure
+  à dateDebut avec le message « la date de fin précède la date de début ». Écrivez d'abord le test, puis le code.
+  Critère d'arrêt : ./mvnw -q verify vert.
+criteres:
+  - { id: C1, type: boucle_verification, min: 2 }
+  - { id: C2, type: tests_apres_ecriture }
+  - { id: C3, type: fichiers_modifies, inclus: ["**/regles/RegleGenerique.java", "backend/src/test/java/**"], exclus: ["**/legacy/**"] }
+  - { id: C4, type: commande, cmd: "cd backend && ./mvnw -q verify", code_attendu: 0 }
+budget: { max_appels_outils: 45, max_etapes: 30 }

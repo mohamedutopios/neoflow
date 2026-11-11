@@ -1,0 +1,866 @@
+{
+  "titre": "poser ses congés dans NeoFlow",
+  "contexte": "Les congés se demandent aujourd'hui par mail au manager, transféré à la DRH qui ressaisit dans un tableur puis dans la paie : demandes perdues, soldes faux. NF-401 demande que les collaborateurs posent leurs congés dans NeoFlow, avec contrôle du solde, des chevauchements et du préavis, la validation restant faite par le manager.\n\nObjectif mesurable : une demande non conforme est refusée à la saisie avec un message qui permet de la corriger seul ; une demande conforme se saisit en moins d'une minute (ENF-05).",
+  "user_stories": [
+    {
+      "id": "US-01",
+      "story": "En tant que collaborateur, je veux poser une demande de congés (CP, RTT ou sans solde) sur une période, éventuellement en demi-journées, afin d'obtenir l'accord de mon manager sans mail ni tableur.",
+      "invest": "Testable après Q-01 à Q-10 ; trop grosse telle quelle : découpée en US-01 à US-04"
+    },
+    {
+      "id": "US-02",
+      "story": "En tant que collaborateur, je veux voir le décompte en jours ouvrés et mon solde disponible pendant la saisie afin de ne pas poser plus que mes droits.",
+      "invest": "Petite, testable (EF-13, EF-14, EF-15)"
+    },
+    {
+      "id": "US-03",
+      "story": "En tant que manager, je veux consulter le solde d'un collaborateur afin de valider en connaissance de cause.",
+      "invest": "Petite, testable (EF-13)"
+    },
+    {
+      "id": "US-04",
+      "story": "En tant que gestionnaire paie, je veux que le solde ne soit débité qu'à l'intégration en paie afin d'éviter les écarts avec les bulletins.",
+      "invest": "Testable (EF-12) après Q-06"
+    }
+  ],
+  "non_objectifs": [
+    {
+      "id": "NO-01",
+      "objectif": "Import automatique des soldes depuis la paie",
+      "raison": "Interface paie non spécifiée (Q-05) ; reprise initiale par migration"
+    },
+    {
+      "id": "NO-02",
+      "objectif": "Calcul de l'acquisition (prorata des nouveaux arrivants)",
+      "raison": "La paie reste la référence (H-05)"
+    },
+    {
+      "id": "NO-03",
+      "objectif": "Jours fériés propres à un site (La Réunion)",
+      "raison": "Le socle ne connaît pas l'agence d'un collaborateur (H-04)"
+    },
+    {
+      "id": "NO-04",
+      "objectif": "Modification ou annulation d'un congé validé",
+      "raison": "Nouvelle transition de `StatutDemande` : ADR à prévoir"
+    },
+    {
+      "id": "NO-05",
+      "objectif": "Imputation d'une demande sur deux périodes de référence",
+      "raison": "H-13 : une demande par période"
+    },
+    {
+      "id": "NO-06",
+      "objectif": "Notifications par mail au manager",
+      "raison": "Hors socle"
+    },
+    {
+      "id": "NO-07",
+      "objectif": "Vue calendrier d'équipe",
+      "raison": "Extension J10"
+    }
+  ],
+  "regles": [
+    {
+      "id": "RM-01",
+      "regle": "Sous-type obligatoire parmi CP, RTT, SANS_SOLDE (R1)",
+      "code": "CONGES_SOUS_TYPE_OBLIGATOIRE",
+      "exemple": "CONGES_SOUS_TYPE_OBLIGATOIRE : précisez CP, RTT ou SANS_SOLDE"
+    },
+    {
+      "id": "RM-02",
+      "regle": "`dateFin` obligatoire et ≥ `dateDebut` (R2)",
+      "code": "CONGES_DATES_INVALIDES",
+      "exemple": "CONGES_DATES_INVALIDES : la date de fin est obligatoire et postérieure ou égale à la date de début"
+    },
+    {
+      "id": "RM-03",
+      "regle": "Demi-journées cohérentes (R3, H-02)",
+      "code": "CONGES_DEMI_JOURNEES_INVALIDES",
+      "exemple": "CONGES_DEMI_JOURNEES_INVALIDES : une journée unique ne peut pas commencer l'après-midi et finir à midi"
+    },
+    {
+      "id": "RM-04",
+      "regle": "Décompte en jours ouvrés, pas de 0,5 (R3, R4)",
+      "code": "",
+      "exemple": "—"
+    },
+    {
+      "id": "RM-05",
+      "regle": "Au moins un jour ouvré décompté (R4)",
+      "code": "CONGES_AUCUN_JOUR_OUVRE",
+      "exemple": "CONGES_AUCUN_JOUR_OUVRE : la période du 2026-12-19 au 2026-12-20 ne contient aucun jour ouvré"
+    },
+    {
+      "id": "RM-06",
+      "regle": "20 jours ouvrés au plus (R5)",
+      "code": "CONGES_DUREE_MAX",
+      "exemple": "CONGES_DUREE_MAX : 21 jours ouvrés demandés, 20 au maximum"
+    },
+    {
+      "id": "RM-07",
+      "regle": "CP et RTT : décompte ≤ solde disponible de la période (R6)",
+      "code": "CONGES_SOLDE_INSUFFISANT",
+      "exemple": "CONGES_SOLDE_INSUFFISANT : 8 jours demandés, 6 disponibles (RTT 2026)"
+    },
+    {
+      "id": "RM-08",
+      "regle": "Une seule période de référence (H-13)",
+      "code": "CONGES_PERIODES_MULTIPLES",
+      "exemple": "CONGES_PERIODES_MULTIPLES : créez une demande par période (CP jusqu'au 2027-05-31, puis à partir du 2027-06-01)"
+    },
+    {
+      "id": "RM-09",
+      "regle": "Pas de chevauchement à la demi-journée (R7)",
+      "code": "CONGES_CHEVAUCHEMENT",
+      "exemple": "CONGES_CHEVAUCHEMENT : la période recoupe la demande n° 12 (du 2026-12-28 au 2026-12-30)"
+    },
+    {
+      "id": "RM-10",
+      "regle": "Préavis, dérogation `urgent` (R8, H-08)",
+      "code": "CONGES_PREAVIS",
+      "exemple": "CONGES_PREAVIS : 10 jours ouvrés demandés, début au plus tôt le 2026-11-30 sauf urgence"
+    },
+    {
+      "id": "RM-11",
+      "regle": "Jamais avant la date du jour, même urgent (H-08)",
+      "code": "CONGES_DATE_PASSEE",
+      "exemple": "CONGES_DATE_PASSEE : un congé ne peut pas commencer avant le 2026-11-16"
+    },
+    {
+      "id": "RM-12",
+      "regle": "SANS_SOLDE : motif de 20 caractères au moins (R9)",
+      "code": "CONGES_MOTIF_OBLIGATOIRE",
+      "exemple": "CONGES_MOTIF_OBLIGATOIRE : précisez le motif du congé sans solde (20 caractères au moins)"
+    },
+    {
+      "id": "RM-13",
+      "regle": "Pas de montant (H-10)",
+      "code": "CONGES_MONTANT_INTERDIT",
+      "exemple": "CONGES_MONTANT_INTERDIT : une demande de congés ne porte pas de montant"
+    }
+  ],
+  "exigences": [
+    {
+      "id": "EF-01",
+      "titre": "Sous-type obligatoire",
+      "enonce": "Quand un demandeur crée ou modifie une demande `CONGES`, le système doit exiger un sous-type `CP`, `RTT` ou `SANS_SOLDE` dans l'objet `conges` ; sinon il doit refuser avec `CONGES_SOUS_TYPE_OBLIGATOIRE`.",
+      "priorite": "Must",
+      "regles": [
+        "RM-01"
+      ],
+      "verification": "`conges_saisie.feature` @EF-01"
+    },
+    {
+      "id": "EF-02",
+      "titre": "Dates obligatoires et ordonnées",
+      "enonce": "Quand un demandeur crée ou modifie une demande `CONGES`, le système doit exiger `dateFin` et vérifier `dateFin` ≥ `dateDebut` ; sinon il doit refuser avec `CONGES_DATES_INVALIDES`. L'absence de `dateDebut` reste rejetée par la validation du socle (HTTP 400).",
+      "priorite": "Must",
+      "regles": [
+        "RM-02"
+      ],
+      "verification": "`conges_saisie.feature` @EF-02"
+    },
+    {
+      "id": "EF-03",
+      "titre": "Demi-journées",
+      "enonce": "Le système doit accepter un début l'après-midi (`demiJourneeDebut`) et une fin à midi (`demiJourneeFin`). Si une journée unique combine les deux, alors il doit refuser avec `CONGES_DEMI_JOURNEES_INVALIDES`.",
+      "priorite": "Must",
+      "regles": [
+        "RM-03"
+      ],
+      "verification": "`conges_saisie.feature` @EF-03 ; exemples à 0,5 et 1,5 jour dans `conges_decompte.feature`"
+    },
+    {
+      "id": "EF-04",
+      "titre": "Décompte en jours ouvrés",
+      "enonce": "Le système doit calculer le nombre de jours ouvrés de la demande (lundi à vendredi, hors jours fériés de la zone `FR`, bornes incluses, moins 0,5 par demi-journée portant sur un jour ouvré) et l'exposer dans `conges.nombreJoursOuvres` de `DemandeResponse`.",
+      "priorite": "Must",
+      "regles": [
+        "RM-04"
+      ],
+      "verification": "plan de scénario `conges_decompte.feature` @EF-04 ; tests unitaires du calendrier"
+    },
+    {
+      "id": "EF-05",
+      "titre": "Période sans jour ouvré refusée",
+      "enonce": "Si le décompte vaut 0, alors le système doit refuser avec `CONGES_AUCUN_JOUR_OUVRE`.",
+      "priorite": "Must",
+      "regles": [
+        "RM-05"
+      ],
+      "verification": "`conges_decompte.feature` @EF-05"
+    },
+    {
+      "id": "EF-06",
+      "titre": "Durée maximale",
+      "enonce": "Si le décompte dépasse 20 jours ouvrés, alors le système doit refuser avec `CONGES_DUREE_MAX`, quel que soit le sous-type.",
+      "priorite": "Must",
+      "regles": [
+        "RM-06"
+      ],
+      "verification": "`conges_decompte.feature` @EF-06"
+    },
+    {
+      "id": "EF-07",
+      "titre": "Contrôle du solde",
+      "enonce": "Quand un demandeur crée, modifie ou soumet une demande `CP` ou `RTT`, le système doit vérifier que le décompte est inférieur ou égal au solde disponible du sous-type pour la période de référence (H-03, H-06), hors la demande contrôlée ; sinon il doit refuser avec `CONGES_SOLDE_INSUFFISANT`. Si la période de référence n'a pas de droits enregistrés, le solde disponible vaut 0.",
+      "priorite": "Must",
+      "regles": [
+        "RM-07"
+      ],
+      "verification": "`conges_solde.feature` @EF-07"
+    },
+    {
+      "id": "EF-08",
+      "titre": "Une seule période de référence",
+      "enonce": "Si une demande `CP` ou `RTT` couvre deux périodes de référence, alors le système doit refuser avec `CONGES_PERIODES_MULTIPLES`.",
+      "priorite": "Should",
+      "regles": [
+        "RM-08"
+      ],
+      "verification": "`conges_solde.feature` @EF-08"
+    },
+    {
+      "id": "EF-09",
+      "titre": "Absence de chevauchement",
+      "enonce": "Si la demande partage au moins une demi-journée avec une autre demande `CONGES` du même demandeur aux statuts `SOUMISE`, `VALIDEE` ou `CLOTUREE`, alors le système doit refuser la création, la modification ou la soumission avec `CONGES_CHEVAUCHEMENT`. Brouillons, refus, périodes contiguës et demandes d'autres collaborateurs ne bloquent pas.",
+      "priorite": "Must",
+      "regles": [
+        "RM-09"
+      ],
+      "verification": "`conges_chevauchement.feature` @EF-09"
+    },
+    {
+      "id": "EF-10",
+      "titre": "Préavis",
+      "enonce": "Si une demande non urgente ne respecte pas le préavis de H-08, alors le système doit refuser avec `CONGES_PREAVIS`. Si `dateDebut` est antérieure à la date du jour, alors le système doit refuser avec `CONGES_DATE_PASSEE`, même pour une demande urgente.",
+      "priorite": "Must",
+      "regles": [
+        "RM-10",
+        "RM-11"
+      ],
+      "verification": "`conges_preavis.feature` @EF-10"
+    },
+    {
+      "id": "EF-11",
+      "titre": "Motif des congés sans solde",
+      "enonce": "Si une demande `SANS_SOLDE` a une description de moins de 20 caractères (hors espaces de début et de fin), alors le système doit refuser avec `CONGES_MOTIF_OBLIGATOIRE`. Aucun contrôle de solde ne s'applique à `SANS_SOLDE`.",
+      "priorite": "Must",
+      "regles": [
+        "RM-12"
+      ],
+      "verification": "`conges_saisie.feature` @EF-11"
+    },
+    {
+      "id": "EF-12",
+      "titre": "Effet des transitions sur le solde",
+      "enonce": "Quand une demande `CP` ou `RTT` passe à `SOUMISE` ou `VALIDEE`, le système doit compter son décompte « en cours » ; quand elle passe à `CLOTUREE`, il doit le compter « pris » ; quand elle passe à `REFUSEE`, il doit le libérer immédiatement (R10, H-06). Les transitions du socle ne changent pas.",
+      "priorite": "Must",
+      "regles": [],
+      "verification": "`conges_solde.feature` @EF-12"
+    },
+    {
+      "id": "EF-13",
+      "titre": "Consultation des soldes",
+      "enonce": "Le système doit exposer `GET /api/conges/soldes?login=` qui renvoie, pour chaque sous-type soumis au solde et pour la période de référence en cours à la date du jour : bornes de la période, acquis, pris, en cours, disponible. Sans `login`, il renvoie les soldes de l'utilisateur connecté. Droits d'accès : ENF-02.",
+      "priorite": "Must",
+      "regles": [],
+      "verification": "`conges_solde.feature` @EF-13"
+    },
+    {
+      "id": "EF-14",
+      "titre": "Simulation du décompte",
+      "enonce": "Le système doit exposer `GET /api/conges/decompte?dateDebut=&dateFin=&demiJourneeDebut=&demiJourneeFin=` qui renvoie le décompte et la liste des jours fériés exclus, sans créer ni modifier de demande.",
+      "priorite": "Must",
+      "regles": [],
+      "verification": "`conges_decompte.feature` @EF-14"
+    },
+    {
+      "id": "EF-15",
+      "titre": "Formulaire de congés",
+      "enonce": "Quand l'utilisateur choisit le type « Congés » dans le formulaire, l'interface doit proposer le sous-type, les dates et les deux cases de demi-journée, masquer le montant, préremplir le titre (« Congés CP du 17/12/2026 au 18/12/2026 », modifiable), afficher le décompte (EF-14, « 1,5 jour ouvré », « 4 jours ouvrés ») et le solde disponible du sous-type (EF-13) dès que la période est saisie, rendre la description (« Motif ») obligatoire pour `SANS_SOLDE`, et afficher chaque refus 422 par le texte qui suit son code, relié au champ concerné, en conservant la saisie.",
+      "priorite": "Must",
+      "regles": [],
+      "verification": "`conges_formulaire.feature` @EF-15 (Playwright, J7) ; tests Vitest du composant (J4)"
+    },
+    {
+      "id": "EF-16",
+      "titre": "Pas de montant",
+      "enonce": "Si `montant` est renseigné sur une demande `CONGES`, alors le système doit refuser avec `CONGES_MONTANT_INTERDIT`.",
+      "priorite": "Should",
+      "regles": [
+        "RM-13"
+      ],
+      "verification": "`conges_saisie.feature` @EF-16"
+    }
+  ],
+  "exigences_non_fonctionnelles": [
+    {
+      "id": "ENF-01",
+      "titre": "Performance",
+      "enonce": "`GET /api/conges/decompte` répond en moins de 150 ms au 95e percentile, et `POST /api/demandes`, `PUT /api/demandes/{id}`, `POST /api/demandes/{id}/soumettre` (type `CONGES`) et `GET /api/conges/soldes` en moins de 300 ms, sur le jeu de démo enrichi de 5 000 demandes, backend local. Les contrôles RM-07 et RM-09 ne chargent que les demandes `CONGES` du demandeur concerné.",
+      "preuve": "métrique `http.server.requests` (Actuator, percentiles activés) mesurée en J10 ; revue des requêtes du repository"
+    },
+    {
+      "id": "ENF-02",
+      "titre": "Sécurité : confidentialité des soldes",
+      "enonce": "Les endpoints `/api/conges/**` exigent une authentification (401 sinon). Un utilisateur sans rôle `VALIDEUR` ni `ADMIN` ne consulte que ses propres soldes : tout autre `login` renvoie 403 (ProblemDetail « Accès refusé ») sans indiquer si le collaborateur existe.",
+      "preuve": "`conges_solde.feature` @ENF-02 ; test d'intégration de sécurité"
+    },
+    {
+      "id": "ENF-03",
+      "titre": "Sécurité : validation des entrées",
+      "enonce": "Dates au format ISO 8601 (`AAAA-MM-JJ`). La simulation (EF-14) refuse une période inversée ou de plus de 366 jours avec un 400 (ProblemDetail). Aucune réponse d'erreur ne contient de trace de pile ni de requête SQL.",
+      "preuve": "`conges_decompte.feature` @ENF-03 ; test d'intégration des paramètres invalides"
+    },
+    {
+      "id": "ENF-04",
+      "titre": "Accessibilité",
+      "enonce": "Le formulaire de congés respecte, pour cet écran, les critères WCAG 2.2 niveau AA (RGAA 4.1) suivants : chaque champ a une étiquette associée ; les cases de demi-journée sont des cases à cocher natives étiquetées ; les erreurs sont reliées au champ (`aria-describedby`) et annoncées (`role=\"alert\"` ou région `aria-live`) ; le focus va au premier champ en erreur ; tout le parcours est réalisable au clavier ; le décompte mis à jour est annoncé (`aria-live=\"polite\"`).",
+      "preuve": "`conges_formulaire.feature` @ENF-04 ; `@axe-core/playwright` sans violation A/AA (J7) ; tests Testing Library par `getByLabelText`"
+    },
+    {
+      "id": "ENF-05",
+      "titre": "Utilisabilité (« pas plus long qu'un mail »)",
+      "enonce": "Pour une demande CP ou RTT standard, l'utilisateur renseigne au plus trois champs (sous-type, date de début, date de fin) : le titre est prérempli, les demi-journées sont décochées par défaut. Trois utilisateurs testeurs saisissent une demande standard en moins de 60 secondes chacun, sans aide.",
+      "preuve": "test Vitest (champs obligatoires et valeurs par défaut) ; test utilisateur chronométré en J10"
+    },
+    {
+      "id": "ENF-06",
+      "titre": "Observabilité",
+      "enonce": "Chaque refus d'une règle CONGES produit un log structuré (ECS) de niveau INFO avec `event.action=conges.regle.refus`, le code de la règle, l'identifiant de la demande s'il existe et le `trace.id` courant, sans autre donnée personnelle que le login. Le compteur Micrometer `neoflow.conges.refus`, étiqueté `regle=<code>`, est incrémenté.",
+      "preuve": "test unitaire de `RegleConges` avec `SimpleMeterRegistry` ; test de capture de logs"
+    },
+    {
+      "id": "ENF-07",
+      "titre": "Déterminisme et testabilité",
+      "enonce": "Aucune règle CONGES ne lit l'horloge système directement : la date du jour vient du bean `Clock horloge` du socle, convertie en Europe/Paris. Les tests fixent l'horloge au 2026-11-16 ; le profil `e2e` la fixe par la propriété `neoflow.horloge.date-fixe`. Le calendrier ne dépend que de la table `jour_ferie`.",
+      "preuve": "tests unitaires avec `Clock.fixed(...)` ; revue de code (aucun `LocalDate.now()` sans horloge)"
+    },
+    {
+      "id": "ENF-08",
+      "titre": "Compatibilité",
+      "enonce": "Aucun changement cassant : l'objet `conges` est optionnel dans `DemandeRequest` et `DemandeResponse` (null pour les autres types), les autres types se comportent comme avant, les tests du socle restent verts, `legacy/`, `RegleGenerique` et `StatutDemande` ne sont pas modifiés.",
+      "preuve": "`./mvnw test` et `npm test` verts ; `git diff --stat main -- backend/src/main/java/com/neosoft/neoflow/legacy backend/src/main/java/com/neosoft/neoflow/regles/RegleGenerique.java backend/src/main/java/com/neosoft/neoflow/demande/StatutDemande.java` vide"
+    }
+  ],
+  "contraintes": [
+    {
+      "id": "C-01",
+      "contrainte": "Le module `legacy/` n'est pas modifié avant le J8 ; le niveau de validation reste calculé par `CircuitValidationService`."
+    },
+    {
+      "id": "C-02",
+      "contrainte": "Conventions API NeoFlow : erreurs `application/problem+json`, 400 requête invalide, 401, 403, 404, 409 transition invalide, 422 règle métier (`erreurs`)."
+    },
+    {
+      "id": "C-03",
+      "contrainte": "Aucune nouvelle dépendance Maven ou npm sans ADR."
+    },
+    {
+      "id": "C-04",
+      "contrainte": "Le contrat `docs/specs/conges/openapi/conges-delta.yaml` fait foi ; toute divergence passe par un amendement validé."
+    },
+    {
+      "id": "C-05",
+      "contrainte": "Règles selon ADR-001, solde selon ADR-002, extension de l'API et du modèle selon ADR-003."
+    }
+  ],
+  "risques": [
+    {
+      "id": "R-01",
+      "risque": "Table `jour_ferie` incomplète pour une année : décompte faux",
+      "mitigation": "Jours fériés chargés pour 2026 et 2027 ; test qui échoue si une année demandée n'a aucun jour férié chargé"
+    },
+    {
+      "id": "R-02",
+      "risque": "Date du jour décalée autour de minuit (UTC contre Europe/Paris)",
+      "mitigation": "ENF-07 ; test à 23 h 30 UTC"
+    },
+    {
+      "id": "R-03",
+      "risque": "Double comptage quand l'import paie existera (`pris` mis à jour par la paie et demandes clôturées)",
+      "mitigation": "Indicateur de remise en cause d'ADR-002"
+    },
+    {
+      "id": "R-04",
+      "risque": "La demande d'exemple de V3 fait échouer un test du socle qui compte les demandes",
+      "mitigation": "T02 : vérifier les tests du socle ; sinon déplacer la donnée dans un jeu de test"
+    },
+    {
+      "id": "R-05",
+      "risque": "Deux soumissions simultanées du même demandeur dépassent le solde",
+      "mitigation": "Risque accepté en v1"
+    },
+    {
+      "id": "R-06",
+      "risque": "La régression injectée au J7 (NPE sur montant nul à la soumission) touche les congés",
+      "mitigation": "Comportement attendu au J7, pas un défaut de la variante"
+    },
+    {
+      "id": "R-07",
+      "risque": "L'agent d'implémentation réutilise `NeoUtils.joursOuvres` côté front",
+      "mitigation": "Interdit par H-15 ; scénarios @EF-04 avec jours fériés"
+    }
+  ],
+  "features": [
+    {
+      "fichier": "conges_chevauchement.feature",
+      "contenu": "# language: fr\n@conges @api @EF-09\nFonctionnalité: Absence de chevauchement entre demandes de congés\n  Afin de ne pas poser deux fois les mêmes jours\n  En tant que collaborateur demandeur\n  Je veux que NeoFlow refuse une période qui recoupe une de mes demandes actives\n\n  Demandes actives : SOUMISE, VALIDEE, CLOTUREE. Granularité : la demi-journée (H-07).\n\n  Contexte:\n    Étant donné que la date du jour est le \"2026-11-16\"\n    Et que \"alice\" dispose des soldes de congés suivants :\n      | sous-type | début période | fin période | acquis | pris |\n      | CP        | 2026-06-01    | 2027-05-31  | 25     | 7    |\n\n  Règle: Une demande active du même demandeur bloque toute période qui la recoupe\n\n    Plan du scénario: Recouvrement avec une demande au statut <statut> (cas C2)\n      Étant donné que \"alice\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"<statut>\"\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-21\" au \"2026-12-31\"\n      Alors la création est refusée avec le code \"CONGES_CHEVAUCHEMENT\"\n\n      Exemples:\n        | statut   |\n        | SOUMISE  |\n        | VALIDEE  |\n        | CLOTUREE |\n\n    Scénario: Une demi-journée commune suffit\n      Étant donné que \"alice\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"VALIDEE\"\n      Quand \"alice\" crée une demande de congés CP commençant le \"2026-12-30\" l'après-midi et finissant le \"2026-12-31\" au soir\n      Alors la création est refusée avec le code \"CONGES_CHEVAUCHEMENT\"\n\n    Scénario: Deux brouillons qui se recoupent ne peuvent pas être soumis tous les deux\n      Étant donné que \"alice\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"SOUMISE\"\n      Et que \"alice\" a une demande de congés en brouillon CP du \"2026-12-30\" au \"2026-12-31\"\n      Quand \"alice\" soumet ce brouillon\n      Alors la soumission est refusée avec le code \"CONGES_CHEVAUCHEMENT\"\n\n  Règle: Brouillons, refus, demi-journées complémentaires, périodes contiguës et congés des autres ne bloquent pas\n\n    Plan du scénario: Pas de blocage par une demande au statut <statut>\n      Étant donné que \"alice\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"<statut>\"\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-21\" au \"2026-12-31\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n      Exemples:\n        | statut    |\n        | BROUILLON |\n        | REFUSEE   |\n\n    Scénario: Matin et après-midi d'une même journée\n      Étant donné que \"alice\" a une demande de congés CP commençant le \"2026-12-28\" au matin et finissant le \"2026-12-30\" à midi au statut \"VALIDEE\"\n      Quand \"alice\" crée une demande de congés CP commençant le \"2026-12-30\" l'après-midi et finissant le \"2026-12-31\" au soir\n      Alors la demande est créée au statut \"BROUILLON\"\n      Et le nombre de jours ouvrés décomptés est 1,5\n\n    Scénario: Période contiguë\n      Étant donné que \"alice\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"VALIDEE\"\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-31\" au \"2026-12-31\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n    Scénario: Congés d'un autre collaborateur sur la même période\n      Étant donné que \"david\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"VALIDEE\"\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-28\" au \"2026-12-30\"\n      Alors la demande est créée au statut \"BROUILLON\"\n"
+    },
+    {
+      "fichier": "conges_decompte.feature",
+      "contenu": "# language: fr\n@conges\nFonctionnalité: Décompte en jours ouvrés d'une demande de congés\n  Afin de savoir exactement combien de jours seront décomptés de mon solde\n  En tant que collaborateur demandeur\n  Je veux que NeoFlow calcule les jours ouvrés de la période, demi-journées comprises\n\n  Jours ouvrés : lundi à vendredi, hors jours fériés de la zone FR (table jour_ferie),\n  bornes incluses, 0,5 jour retiré par demi-journée portant sur un jour ouvré (H-02, H-04).\n\n  Contexte:\n    Étant donné que la date du jour est le \"2026-11-16\"\n    Et que \"alice\" dispose des soldes de congés suivants :\n      | sous-type | début période | fin période | acquis | pris |\n      | CP        | 2026-06-01    | 2027-05-31  | 25     | 7    |\n\n  @EF-04 @api\n  Règle: Le décompte exclut week-ends et jours fériés et compte les demi-journées\n\n    Plan du scénario: Décompte d'un congé commençant le <debut> <moment_debut> et finissant le <fin> <moment_fin>\n      Quand \"alice\" crée une demande de congés CP commençant le \"<debut>\" <moment_debut> et finissant le \"<fin>\" <moment_fin>\n      Alors la demande est créée au statut \"BROUILLON\"\n      Et le nombre de jours ouvrés décomptés est <jours>\n\n      Exemples: Journées entières\n        | debut      | moment_debut | fin        | moment_fin | jours | motif                     |\n        | 2026-12-21 | au matin     | 2026-12-24 | au soir    | 4     | cas C1                    |\n        | 2027-01-04 | au matin     | 2027-01-08 | au soir    | 5     | semaine complète          |\n        | 2026-12-21 | au matin     | 2026-12-25 | au soir    | 4     | Noël exclu                |\n        | 2026-12-28 | au matin     | 2027-01-01 | au soir    | 4     | jour de l'an exclu        |\n        | 2027-03-29 | au matin     | 2027-04-02 | au soir    | 4     | lundi de Pâques exclu     |\n\n      Exemples: Demi-journées\n        | debut      | moment_debut | fin        | moment_fin | jours | motif                     |\n        | 2026-12-17 | l'après-midi | 2026-12-18 | au soir    | 1,5   | cas C6                    |\n        | 2027-01-07 | l'après-midi | 2027-01-08 | à midi     | 1     | deux demi-journées        |\n\n  @EF-05 @api\n  Règle: Une période sans aucun jour ouvré est refusée\n\n    Scénario: Période limitée à un week-end (cas C7)\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-19\" au \"2026-12-20\"\n      Alors la création est refusée avec le code \"CONGES_AUCUN_JOUR_OUVRE\"\n      Et aucune demande de congés n'est enregistrée pour \"alice\"\n\n    Scénario: Période limitée à un jour férié\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-25\" au \"2026-12-25\"\n      Alors la création est refusée avec le code \"CONGES_AUCUN_JOUR_OUVRE\"\n\n  @EF-06 @api\n  Règle: Une demande ne dépasse pas 20 jours ouvrés\n\n    Scénario: Vingt jours ouvrés acceptés\n      Quand \"alice\" crée une demande de congés SANS_SOLDE du \"2027-01-04\" au \"2027-01-29\" avec le motif \"Projet personnel de longue durée\"\n      Alors la demande est créée au statut \"BROUILLON\"\n      Et le nombre de jours ouvrés décomptés est 20\n\n    Scénario: Vingt et un jours ouvrés refusés (cas C9)\n      Quand \"alice\" crée une demande de congés CP du \"2027-01-04\" au \"2027-02-01\"\n      Alors la création est refusée avec le code \"CONGES_DUREE_MAX\"\n\n  @EF-14 @api\n  Règle: Le décompte peut être simulé sans créer de demande\n\n    Scénario: Simulation d'une période contenant Noël\n      Quand \"alice\" simule le décompte du \"2026-12-21\" au \"2026-12-31\"\n      Alors le nombre de jours ouvrés simulé est 8\n      Et les jours fériés exclus sont :\n        | date       | libelle |\n        | 2026-12-25 | Noël    |\n      Et aucune demande de congés n'est enregistrée pour \"alice\"\n\n    Scénario: Simulation avec une demi-journée de début\n      Quand \"alice\" simule le décompte d'un congé commençant le \"2026-12-17\" l'après-midi et finissant le \"2026-12-18\" au soir\n      Alors le nombre de jours ouvrés simulé est 1,5\n\n    @ENF-03\n    Scénario: Simulation refusée sur une période de plus de 366 jours\n      Quand \"alice\" simule le décompte du \"2026-01-01\" au \"2027-06-30\"\n      Alors la simulation est rejetée comme requête invalide\n\n    @ENF-03\n    Scénario: Simulation refusée sur une période inversée\n      Quand \"alice\" simule le décompte du \"2026-12-31\" au \"2026-12-21\"\n      Alors la simulation est rejetée comme requête invalide\n"
+    },
+    {
+      "fichier": "conges_formulaire.feature",
+      "contenu": "# language: fr\n@conges @ui\nFonctionnalité: Saisie d'une demande de congés dans l'interface\n  Afin de poser mes congés aussi vite qu'en écrivant un mail\n  En tant que collaborateur demandeur\n  Je veux voir le décompte et mon solde pendant la saisie\n\n  Automatisation : Vitest + Testing Library (J4), Playwright (J7) contre un backend\n  en profil e2e, horloge fixée au 2026-11-16 (ENF-07).\n\n  Contexte:\n    Étant donné que la date du jour de l'application est le \"2026-11-16\"\n    Et que \"alice\" est connectée à NeoFlow\n    Et qu'elle ouvre le formulaire de nouvelle demande\n\n  @EF-15\n  Règle: Le formulaire guide la saisie d'un congé\n\n    Scénario: Aperçu du décompte et du solde pendant la saisie (cas C6)\n      Quand elle saisit un congé CP commençant le \"2026-12-17\" l'après-midi et finissant le \"2026-12-18\" au soir, sans l'enregistrer\n      Alors le formulaire affiche le décompte \"1,5 jour ouvré\"\n      Et le formulaire affiche le solde disponible \"CP : 15 jours\"\n      Et le titre proposé est \"Congés CP du 17/12/2026 au 18/12/2026\"\n      Et aucun champ montant n'est proposé\n\n    Scénario: Motif exigé pour un congé sans solde\n      Quand elle choisit le sous-type \"Sans solde\"\n      Alors le champ \"Motif\" est signalé comme obligatoire\n\n    Scénario: Refus métier affiché sans perte de la saisie (cas C2)\n      Quand elle enregistre un congé CP du \"2026-12-21\" au \"2026-12-31\"\n      Alors un message contenant \"recoupe la demande\" est affiché\n      Et la période saisie est conservée\n\n  @ENF-04\n  Règle: Le formulaire de congés est accessible\n\n    Scénario: Erreur annoncée et focus sur le champ concerné\n      Quand elle enregistre un congé CP du \"2026-11-17\" au \"2026-11-17\"\n      Alors le message d'erreur est annoncé aux technologies d'assistance\n      Et le focus est placé sur le champ \"Date de début\"\n      Et l'analyse d'accessibilité automatique ne signale aucune violation WCAG A ou AA\n\n    Scénario: Saisie complète au clavier\n      Quand elle saisit et enregistre un congé CP du \"2026-12-21\" au \"2026-12-24\" uniquement au clavier\n      Alors la demande est enregistrée au statut \"BROUILLON\"\n"
+    },
+    {
+      "fichier": "conges_preavis.feature",
+      "contenu": "# language: fr\n@conges @api @EF-10\nFonctionnalité: Préavis d'une demande de congés\n  Afin que mon manager puisse organiser l'activité\n  En tant que collaborateur demandeur\n  Je veux connaître et respecter le délai de prévenance, sauf urgence\n\n  Au-delà de 5 jours ouvrés : début au plus tôt à J+14 calendaires ; sinon à J+2 ouvrés.\n  Une demande urgente déroge au préavis, pas au solde, et jamais au passé (H-08).\n  Date du jour : lundi 16 novembre 2026, donc J+14 = 2026-11-30 et J+2 ouvrés = 2026-11-18.\n\n  Contexte:\n    Étant donné que la date du jour est le \"2026-11-16\"\n    Et que \"alice\" dispose des soldes de congés suivants :\n      | sous-type | début période | fin période | acquis | pris |\n      | CP        | 2026-06-01    | 2027-05-31  | 25     | 7    |\n\n  Règle: Au-delà de 5 jours ouvrés, le préavis est de 14 jours calendaires\n\n    Scénario: Dix jours ouvrés demandés une semaine à l'avance (cas C4)\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-23\" au \"2026-12-04\"\n      Alors la création est refusée avec le code \"CONGES_PREAVIS\"\n      Et le message d'erreur contient \"2026-11-30\"\n\n    Scénario: Dix jours ouvrés demandés exactement 14 jours à l'avance\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-30\" au \"2026-12-11\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n    Scénario: Dix jours ouvrés demandés 11 jours à l'avance\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-27\" au \"2026-12-10\"\n      Alors la création est refusée avec le code \"CONGES_PREAVIS\"\n\n  Règle: Jusqu'à 5 jours ouvrés, le préavis est de 2 jours ouvrés\n\n    Scénario: Cinq jours ouvrés relèvent du préavis court\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-23\" au \"2026-11-27\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n    Scénario: Un jour posé exactement 2 jours ouvrés à l'avance\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-18\" au \"2026-11-18\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n    Scénario: Un jour posé pour le lendemain\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-17\" au \"2026-11-17\"\n      Alors la création est refusée avec le code \"CONGES_PREAVIS\"\n\n  Règle: Une demande urgente déroge au préavis mais pas au passé\n\n    Scénario: Dix jours ouvrés urgents une semaine à l'avance (cas C5)\n      Quand \"alice\" crée une demande de congés urgente CP du \"2026-11-23\" au \"2026-12-04\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n    Scénario: Congé urgent commençant le jour même\n      Quand \"alice\" crée une demande de congés urgente CP du \"2026-11-16\" au \"2026-11-16\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n    Scénario: Congé urgent commençant avant la date du jour\n      Quand \"alice\" crée une demande de congés urgente CP du \"2026-11-13\" au \"2026-11-13\"\n      Alors la création est refusée avec le code \"CONGES_DATE_PASSEE\"\n"
+    },
+    {
+      "fichier": "conges_saisie.feature",
+      "contenu": "# language: fr\n@conges @api\nFonctionnalité: Saisie d'une demande de congés valide\n  Afin que seules des demandes exploitables parviennent à mon manager\n  En tant que collaborateur demandeur\n  Je veux être averti dès la saisie d'une demande de congés incomplète ou incohérente\n\n  Contexte:\n    Étant donné que la date du jour est le \"2026-11-16\"\n    Et que \"alice\" dispose des soldes de congés suivants :\n      | sous-type | début période | fin période | acquis | pris |\n      | CP        | 2026-06-01    | 2027-05-31  | 25     | 7    |\n      | RTT       | 2026-01-01    | 2026-12-31  | 10     | 4    |\n\n  @EF-01\n  Règle: Le sous-type de congé est obligatoire\n\n    Scénario: Demande de congés sans sous-type\n      Quand \"alice\" crée une demande de congés sans sous-type du \"2026-12-21\" au \"2026-12-24\"\n      Alors la création est refusée avec le code \"CONGES_SOUS_TYPE_OBLIGATOIRE\"\n\n  @EF-02\n  Règle: Les dates de début et de fin sont obligatoires et ordonnées\n\n    Scénario: Date de fin absente\n      Quand \"alice\" crée une demande de congés CP commençant le \"2026-12-21\" sans date de fin\n      Alors la création est refusée avec le code \"CONGES_DATES_INVALIDES\"\n\n    Scénario: Date de fin antérieure à la date de début\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-24\" au \"2026-12-21\"\n      Alors la création est refusée avec le code \"CONGES_DATES_INVALIDES\"\n\n    Scénario: Date de début absente\n      Quand \"alice\" crée une demande de congés CP sans date de début\n      Alors la création est rejetée comme requête invalide\n\n  @EF-03\n  Règle: Une journée unique ne commence pas l'après-midi pour finir à midi\n\n    Scénario: Demi-journée de l'après-midi sur une journée unique\n      Quand \"alice\" crée une demande de congés CP commençant le \"2026-12-21\" l'après-midi et finissant le \"2026-12-21\" au soir\n      Alors la demande est créée au statut \"BROUILLON\"\n      Et le nombre de jours ouvrés décomptés est 0,5\n\n    Scénario: Indicateurs de demi-journée incompatibles\n      Quand \"alice\" crée une demande de congés CP commençant le \"2026-12-21\" l'après-midi et finissant le \"2026-12-21\" à midi\n      Alors la création est refusée avec le code \"CONGES_DEMI_JOURNEES_INVALIDES\"\n\n  @EF-11\n  Règle: Un congé sans solde exige un motif d'au moins 20 caractères\n\n    Scénario: Congé sans solde sans motif (cas C8)\n      Quand \"alice\" crée une demande de congés SANS_SOLDE du \"2027-02-01\" au \"2027-02-05\" sans motif\n      Alors la création est refusée avec le code \"CONGES_MOTIF_OBLIGATOIRE\"\n\n    Scénario: Motif de 19 caractères refusé\n      Quand \"alice\" crée une demande de congés SANS_SOLDE du \"2027-02-01\" au \"2027-02-05\" avec le motif \"Raisons familiales.\"\n      Alors la création est refusée avec le code \"CONGES_MOTIF_OBLIGATOIRE\"\n\n    Scénario: Motif de 20 caractères accepté\n      Quand \"alice\" crée une demande de congés SANS_SOLDE du \"2027-02-01\" au \"2027-02-05\" avec le motif \"Raisons personnelles\"\n      Alors la demande est créée au statut \"BROUILLON\"\n\n  @EF-16\n  Règle: Une demande de congés ne porte pas de montant\n\n    Scénario: Montant renseigné sur une demande de congés\n      Quand \"alice\" crée une demande de congés CP du \"2026-12-21\" au \"2026-12-24\" avec un montant de 100 euros\n      Alors la création est refusée avec le code \"CONGES_MONTANT_INTERDIT\"\n\n  @EF-10 @EF-16\n  Règle: Toutes les règles enfreintes sont signalées dans la même réponse\n\n    Scénario: Préavis non respecté et montant renseigné\n      Quand \"alice\" crée une demande de congés CP du \"2026-11-17\" au \"2026-11-17\" avec un montant de 100 euros\n      Alors la création est refusée avec les codes :\n        | code                    |\n        | CONGES_PREAVIS          |\n        | CONGES_MONTANT_INTERDIT |\n"
+    },
+    {
+      "fichier": "conges_solde.feature",
+      "contenu": "# language: fr\n@conges @api\nFonctionnalité: Solde de congés\n  Afin de ne pas poser plus de jours que mes droits\n  En tant que collaborateur demandeur\n  Je veux que NeoFlow contrôle mon solde et me permette de le consulter\n\n  Solde disponible = acquis − pris − en cours, par sous-type et par période de référence\n  (H-03). En cours : SOUMISE et VALIDEE ; pris : reprise paie + CLOTUREE (H-06).\n\n  Contexte:\n    Étant donné que la date du jour est le \"2026-11-16\"\n    Et que \"alice\" dispose des soldes de congés suivants :\n      | sous-type | début période | fin période | acquis | pris |\n      | CP        | 2026-06-01    | 2027-05-31  | 25     | 7    |\n      | RTT       | 2026-01-01    | 2026-12-31  | 10     | 4    |\n    Et que \"alice\" a une demande de congés CP du \"2026-12-28\" au \"2026-12-30\" au statut \"SOUMISE\"\n\n  @EF-07\n  Règle: Une demande CP ou RTT ne dépasse pas le solde disponible de sa période\n\n    Scénario: Demande égale au solde CP disponible\n      Quand \"alice\" crée une demande de congés CP du \"2027-01-04\" au \"2027-01-22\"\n      Alors la demande est créée au statut \"BROUILLON\"\n      Et le nombre de jours ouvrés décomptés est 15\n\n    Scénario: Demande dépassant le solde CP disponible d'un jour\n      Quand \"alice\" crée une demande de congés CP du \"2027-01-04\" au \"2027-01-25\"\n      Alors la création est refusée avec le code \"CONGES_SOLDE_INSUFFISANT\"\n      Et le message d'erreur contient \"16 jours demandés, 15 disponibles\"\n\n    Scénario: Demande RTT dépassant le solde RTT (cas C3)\n      Quand \"alice\" crée une demande de congés RTT du \"2026-12-07\" au \"2026-12-16\"\n      Alors la création est refusée avec le code \"CONGES_SOLDE_INSUFFISANT\"\n      Et le message d'erreur contient \"8 jours demandés, 6 disponibles\"\n\n    Scénario: Période de référence sans droits enregistrés\n      Quand \"alice\" crée une demande de congés RTT du \"2027-01-11\" au \"2027-01-12\"\n      Alors la création est refusée avec le code \"CONGES_SOLDE_INSUFFISANT\"\n\n    Scénario: Le solde est contrôlé à la modification d'un brouillon\n      Étant donné que \"alice\" a une demande de congés en brouillon CP du \"2027-01-04\" au \"2027-01-08\"\n      Quand \"alice\" modifie ce brouillon pour la période du \"2027-01-04\" au \"2027-01-25\"\n      Alors la modification est refusée avec le code \"CONGES_SOLDE_INSUFFISANT\"\n      Et le brouillon conserve la période du \"2027-01-04\" au \"2027-01-08\"\n\n    Scénario: Le solde est contrôlé de nouveau à la soumission\n      Étant donné que \"alice\" a une demande de congés en brouillon CP du \"2027-01-04\" au \"2027-01-15\"\n      Et que \"alice\" a une demande de congés CP du \"2027-02-01\" au \"2027-02-12\" au statut \"VALIDEE\"\n      Quand \"alice\" soumet ce brouillon\n      Alors la soumission est refusée avec le code \"CONGES_SOLDE_INSUFFISANT\"\n      Et la demande reste au statut \"BROUILLON\"\n\n  @EF-08\n  Règle: Une demande CP ou RTT reste dans une seule période de référence\n\n    Scénario: CP de part et d'autre du 31 mai\n      Quand \"alice\" crée une demande de congés CP du \"2027-05-31\" au \"2027-06-01\"\n      Alors la création est refusée avec le code \"CONGES_PERIODES_MULTIPLES\"\n\n    Scénario: RTT de part et d'autre du 31 décembre\n      Quand \"alice\" crée une demande de congés RTT du \"2026-12-31\" au \"2027-01-04\"\n      Alors la création est refusée avec le code \"CONGES_PERIODES_MULTIPLES\"\n\n  @EF-12\n  Règle: Les demandes soumises et validées sont en cours, les clôturées sont prises\n\n    Scénario: Un brouillon ne réserve aucun jour\n      Étant donné que \"alice\" a une demande de congés en brouillon CP du \"2027-01-04\" au \"2027-01-08\"\n      Quand \"alice\" consulte ses soldes de congés\n      Alors les soldes de congés de \"alice\" sont :\n        | sous-type | acquis | pris | en cours | disponible |\n        | CP        | 25     | 7    | 3        | 15         |\n        | RTT       | 10     | 4    | 0        | 6          |\n\n    Scénario: La validation ne change pas le disponible, déjà réservé à la soumission\n      Quand \"bob\" valide la demande du \"2026-12-28\" au \"2026-12-30\"\n      Alors le solde CP de \"alice\" est de 7 pris, 3 en cours et 15 disponibles\n\n    Scénario: La clôture après intégration en paie transforme les jours en cours en jours pris\n      Étant donné que la demande du \"2026-12-28\" au \"2026-12-30\" est au statut \"VALIDEE\"\n      Quand \"admin\" clôture la demande du \"2026-12-28\" au \"2026-12-30\"\n      Alors le solde CP de \"alice\" est de 10 pris, 0 en cours et 15 disponibles\n\n    Scénario: Le refus libère immédiatement les jours en cours\n      Quand \"bob\" refuse la demande du \"2026-12-28\" au \"2026-12-30\" avec le motif \"Clôture comptable\"\n      Alors le solde CP de \"alice\" est de 7 pris, 0 en cours et 18 disponibles\n\n  @EF-13\n  Règle: Les soldes sont consultables par leur titulaire et par les valideurs\n\n    Scénario: Le demandeur consulte ses propres soldes\n      Quand \"alice\" consulte ses soldes de congés\n      Alors les soldes de congés de \"alice\" sont :\n        | sous-type | acquis | pris | en cours | disponible |\n        | CP        | 25     | 7    | 3        | 15         |\n        | RTT       | 10     | 4    | 0        | 6          |\n\n    Scénario: Un valideur consulte les soldes d'un demandeur\n      Quand \"bob\" consulte les soldes de congés de \"alice\"\n      Alors le solde CP de \"alice\" est de 7 pris, 3 en cours et 15 disponibles\n\n  @ENF-02\n  Règle: Les soldes d'un collaborateur sont confidentiels\n\n    Scénario: Un demandeur ne consulte pas les soldes d'un autre collaborateur\n      Quand \"alice\" consulte les soldes de congés de \"david\"\n      Alors l'accès est refusé\n\n    Scénario: La consultation exige une authentification\n      Quand un utilisateur non authentifié consulte les soldes de congés de \"alice\"\n      Alors une authentification est exigée\n"
+    }
+  ],
+  "openapi_delta": "openapi: 3.1.0\ninfo:\n  title: NeoFlow — delta d'API de la variante CONGES\n  version: 1.0.0\n  summary: Opérations nouvelles ou modifiées par SPEC-CONGES v1.0 (NF-401).\n  description: |\n    Contrat contract-first de la variante CONGES. Il ne décrit que le delta par\n    rapport au socle NeoFlow : opérations nouvelles, ou dont le corps ou le\n    comportement change. Ce document fait foi pour l'implémentation (contrainte C-04).\n\n    Extensions :\n    - `x-neoflow-delta` : `nouveau` ou `modifie` ;\n    - `x-exigences` : identifiants d'exigences de docs/specs/CONGES.md couverts.\n\n    Conventions NeoFlow (GlobalExceptionHandler du socle) : erreurs au format\n    `application/problem+json` (RFC 9457) ; 400 « Requête invalide », 401, 403\n    « Accès refusé », 404 « Demande introuvable », 409 « Transition de statut\n    invalide », 422 « Règles métier non respectées » avec la propriété `erreurs`.\n    Les codes de succès des opérations du socle ne sont pas modifiés par la variante.\n  contact:\n    name: Équipe NeoFlow (formation NSS+)\n  license:\n    name: Usage interne Neosoft — formation\n    url: https://www.neosoft.fr\nservers:\n  - url: http://localhost:8080\n    description: Backend local (profil dev)\nsecurity:\n  - basicAuth: []\ntags:\n  - name: Demandes\n    description: Opérations du socle dont le corps ou le comportement change pour la variante.\n  - name: Conges\n    description: Opérations propres à la variante CONGES.\npaths:\n  /api/demandes:\n    get:\n      tags: [Demandes]\n      operationId: listerDemandes\n      summary: Liste paginée des demandes\n      description: Chaque élément porte l'objet `conges` (null hors CONGES). Paramètres inchangés.\n      x-neoflow-delta: modifie\n      x-exigences: [EF-04, ENF-08]\n      parameters:\n        - name: statut\n          in: query\n          required: false\n          schema:\n            $ref: '#/components/schemas/StatutDemande'\n        - name: type\n          in: query\n          required: false\n          schema:\n            $ref: '#/components/schemas/TypeDemande'\n        - name: page\n          in: query\n          required: false\n          description: Numéro de page, à partir de 0.\n          schema:\n            type: integer\n            minimum: 0\n            default: 0\n        - name: size\n          in: query\n          required: false\n          schema:\n            type: integer\n            minimum: 1\n            default: 20\n      responses:\n        '200':\n          description: Page de demandes (sérialisation Spring Data VIA_DTO).\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/PageDemandeResponse'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\n    post:\n      tags: [Demandes]\n      operationId: creerDemande\n      summary: Crée une demande au statut BROUILLON\n      description: |\n        Pour `type = CONGES`, l'objet `conges` porte le sous-type et les demi-journées ;\n        les règles RM-01 à RM-13 s'appliquent (EF-01 à EF-11, EF-16). Toutes les règles\n        enfreintes sont renvoyées dans `erreurs`, sauf si le sous-type ou les dates sont\n        invalides (seules ces erreurs sont alors renvoyées).\n      x-neoflow-delta: modifie\n      x-exigences: [EF-01, EF-02, EF-03, EF-04, EF-05, EF-06, EF-07, EF-08, EF-09, EF-10, EF-11, EF-16]\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              $ref: '#/components/schemas/DemandeRequest'\n            examples:\n              congesC6:\n                summary: Cas C6 — CP du 17 décembre après-midi au 18 décembre (1,5 jour)\n                value:\n                  type: CONGES\n                  titre: Congés CP du 17/12/2026 au 18/12/2026\n                  dateDebut: '2026-12-17'\n                  dateFin: '2026-12-18'\n                  urgent: false\n                  conges:\n                    sousType: CP\n                    demiJourneeDebut: true\n                    demiJourneeFin: false\n      responses:\n        '201':\n          description: Demande créée au statut BROUILLON.\n          headers:\n            Location:\n              description: URL de la demande créée.\n              schema:\n                type: string\n                format: uri-reference\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/DemandeResponse'\n        '400':\n          $ref: '#/components/responses/RequeteInvalide'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\n        '403':\n          $ref: '#/components/responses/AccesRefuse'\n        '422':\n          $ref: '#/components/responses/RegleMetierNonRespectee'\n  /api/demandes/{id}:\n    parameters:\n      - $ref: '#/components/parameters/IdDemande'\n    get:\n      tags: [Demandes]\n      operationId: consulterDemande\n      summary: Détail d'une demande\n      description: Ajoute l'objet `conges` avec le décompte (EF-04), null hors CONGES.\n      x-neoflow-delta: modifie\n      x-exigences: [EF-04, ENF-08]\n      responses:\n        '200':\n          description: Détail de la demande.\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/DemandeResponse'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\n        '404':\n          $ref: '#/components/responses/Introuvable'\n    put:\n      tags: [Demandes]\n      operationId: modifierDemande\n      summary: Modifie une demande au statut BROUILLON\n      description: Pour `type = CONGES`, mêmes règles qu'à la création.\n      x-neoflow-delta: modifie\n      x-exigences: [EF-01, EF-02, EF-03, EF-05, EF-06, EF-07, EF-08, EF-09, EF-10, EF-11, EF-16]\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              $ref: '#/components/schemas/DemandeRequest'\n      responses:\n        '200':\n          description: Demande modifiée.\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/DemandeResponse'\n        '400':\n          $ref: '#/components/responses/RequeteInvalide'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\n        '403':\n          $ref: '#/components/responses/AccesRefuse'\n        '404':\n          $ref: '#/components/responses/Introuvable'\n        '409':\n          $ref: '#/components/responses/TransitionInvalide'\n        '422':\n          $ref: '#/components/responses/RegleMetierNonRespectee'\n  /api/demandes/{id}/soumettre:\n    parameters:\n      - $ref: '#/components/parameters/IdDemande'\n    post:\n      tags: [Demandes]\n      operationId: soumettreDemande\n      summary: Soumet une demande au circuit de validation\n      description: |\n        Pour `type = CONGES`, les règles sont contrôlées de nouveau avant la transition\n        BROUILLON → SOUMISE ; en cas de refus, la demande reste au statut BROUILLON.\n        Le niveau de validation reste calculé par le circuit existant (C-01).\n      x-neoflow-delta: modifie\n      x-exigences: [EF-05, EF-06, EF-07, EF-08, EF-09, EF-10, EF-11, EF-12, EF-16]\n      responses:\n        '200':\n          description: Demande soumise.\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/DemandeResponse'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\n        '403':\n          $ref: '#/components/responses/AccesRefuse'\n        '404':\n          $ref: '#/components/responses/Introuvable'\n        '409':\n          $ref: '#/components/responses/TransitionInvalide'\n        '422':\n          $ref: '#/components/responses/RegleMetierNonRespectee'\n  /api/conges/soldes:\n    get:\n      tags: [Conges]\n      operationId: consulterSoldesConges\n      summary: Soldes de congés d'un collaborateur pour les périodes en cours\n      description: |\n        Un élément par sous-type soumis au solde (CP, RTT), pour la période de référence\n        qui contient la date du jour. Sans `login` : utilisateur connecté. Un utilisateur\n        sans rôle VALIDEUR ni ADMIN qui demande un autre login reçoit 403 (ENF-02).\n      x-neoflow-delta: nouveau\n      x-exigences: [EF-12, EF-13, ENF-01, ENF-02]\n      parameters:\n        - name: login\n          in: query\n          required: false\n          description: Login du collaborateur ; utilisateur connecté par défaut.\n          schema:\n            type: string\n            pattern: '^[a-z][a-z0-9._-]{1,49}$'\n          example: alice\n      responses:\n        '200':\n          description: Soldes calculés à la date du jour.\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/SoldesConges'\n              example:\n                login: alice\n                dateReference: '2026-11-16'\n                soldes:\n                  - sousType: CP\n                    periodeDebut: '2026-06-01'\n                    periodeFin: '2027-05-31'\n                    acquis: 25\n                    pris: 7\n                    enCours: 3\n                    disponible: 15\n                  - sousType: RTT\n                    periodeDebut: '2026-01-01'\n                    periodeFin: '2026-12-31'\n                    acquis: 10\n                    pris: 4\n                    enCours: 0\n                    disponible: 6\n        '400':\n          $ref: '#/components/responses/RequeteInvalide'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\n        '403':\n          $ref: '#/components/responses/AccesRefuse'\n  /api/conges/decompte:\n    get:\n      tags: [Conges]\n      operationId: simulerDecompteConges\n      summary: Simule le décompte en jours ouvrés d'une période\n      description: |\n        Source unique du décompte affiché par le formulaire (H-15). N'enregistre rien.\n        Période inversée ou de plus de 366 jours : 400 (ENF-03).\n      x-neoflow-delta: nouveau\n      x-exigences: [EF-14, ENF-01, ENF-03]\n      parameters:\n        - name: dateDebut\n          in: query\n          required: true\n          schema:\n            type: string\n            format: date\n          example: '2026-12-17'\n        - name: dateFin\n          in: query\n          required: true\n          schema:\n            type: string\n            format: date\n          example: '2026-12-18'\n        - name: demiJourneeDebut\n          in: query\n          required: false\n          description: Le premier jour commence l'après-midi.\n          schema:\n            type: boolean\n            default: false\n        - name: demiJourneeFin\n          in: query\n          required: false\n          description: Le dernier jour finit à midi.\n          schema:\n            type: boolean\n            default: false\n      responses:\n        '200':\n          description: Décompte de la période.\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/DecompteConges'\n              example:\n                dateDebut: '2026-12-21'\n                dateFin: '2026-12-31'\n                demiJourneeDebut: false\n                demiJourneeFin: false\n                nombreJoursOuvres: 8\n                joursFeriesExclus:\n                  - date: '2026-12-25'\n                    libelle: Noël\n        '400':\n          $ref: '#/components/responses/RequeteInvalide'\n        '401':\n          $ref: '#/components/responses/NonAuthentifie'\ncomponents:\n  securitySchemes:\n    basicAuth:\n      type: http\n      scheme: basic\n      description: Utilisateurs de démonstration alice (DEMANDEUR), bob (VALIDEUR), admin (ADMIN).\n  parameters:\n    IdDemande:\n      name: id\n      in: path\n      required: true\n      description: Identifiant technique de la demande.\n      schema:\n        type: integer\n        format: int64\n        minimum: 1\n  schemas:\n    TypeDemande:\n      type: string\n      enum: [GENERIQUE, CONGES, NOTE_DE_FRAIS, MATERIEL_IT, RESERVATION_SALLE, FORMATION, ACCES_APPLICATIF, DEPLACEMENT, ACHAT, INCIDENT, ONBOARDING]\n    StatutDemande:\n      type: string\n      enum: [BROUILLON, SOUMISE, VALIDEE, REFUSEE, CLOTUREE]\n    SousTypeConges:\n      type: string\n      enum: [CP, RTT, SANS_SOLDE]\n    Jours:\n      type: number\n      minimum: 0\n      multipleOf: 0.5\n      description: Nombre de jours ouvrés, par pas de 0,5.\n    DemandeRequest:\n      type: object\n      description: Corps de création et de modification (socle) étendu par l'objet `conges` (ADR-003).\n      required: [type, titre, dateDebut]\n      properties:\n        type:\n          $ref: '#/components/schemas/TypeDemande'\n        titre:\n          type: string\n          minLength: 1\n          maxLength: 120\n        description:\n          type: [string, 'null']\n          maxLength: 4000\n          description: Pour SANS_SOLDE, motif de 20 caractères au moins (RM-12).\n        montant:\n          type: [number, 'null']\n          description: Interdit pour CONGES (RM-13).\n        dateDebut:\n          type: string\n          format: date\n        dateFin:\n          type: [string, 'null']\n          format: date\n          description: Obligatoire pour CONGES (RM-02, erreur 422).\n        departement:\n          type: [string, 'null']\n          maxLength: 40\n        urgent:\n          type: boolean\n          default: false\n          description: Pour CONGES, déroge au préavis (RM-10), pas au solde.\n        conges:\n          description: Détail propre aux congés ; obligatoire pour CONGES (RM-01, erreur 422), ignoré sinon.\n          x-neoflow-delta: nouveau\n          anyOf:\n            - $ref: '#/components/schemas/CongesDetailRequest'\n            - type: 'null'\n    CongesDetailRequest:\n      type: object\n      properties:\n        sousType:\n          description: Absent ou null → 422 CONGES_SOUS_TYPE_OBLIGATOIRE (règle métier, pas validation syntaxique).\n          anyOf:\n            - $ref: '#/components/schemas/SousTypeConges'\n            - type: 'null'\n        demiJourneeDebut:\n          type: boolean\n          default: false\n          description: Le premier jour commence l'après-midi.\n        demiJourneeFin:\n          type: boolean\n          default: false\n          description: Le dernier jour finit à midi.\n    DemandeResponse:\n      type: object\n      required: [id, type, titre, demandeur, dateDebut, statut, urgent, dateCreation, dateMaj]\n      properties:\n        id:\n          type: integer\n          format: int64\n        type:\n          $ref: '#/components/schemas/TypeDemande'\n        titre:\n          type: string\n        description:\n          type: [string, 'null']\n        demandeur:\n          type: string\n          description: Login du demandeur.\n        montant:\n          type: [number, 'null']\n        dateDebut:\n          type: string\n          format: date\n        dateFin:\n          type: [string, 'null']\n          format: date\n        statut:\n          $ref: '#/components/schemas/StatutDemande'\n        niveauValidation:\n          type: [integer, 'null']\n          minimum: 1\n          maximum: 3\n          description: Calculé à la soumission par le circuit existant.\n        departement:\n          type: [string, 'null']\n        urgent:\n          type: boolean\n        dateCreation:\n          type: string\n          format: date-time\n        dateMaj:\n          type: string\n          format: date-time\n        motifRefus:\n          type: [string, 'null']\n        conges:\n          description: Détail des congés avec décompte ; null pour les autres types.\n          x-neoflow-delta: nouveau\n          anyOf:\n            - $ref: '#/components/schemas/CongesDetailResponse'\n            - type: 'null'\n    CongesDetailResponse:\n      type: object\n      required: [sousType, demiJourneeDebut, demiJourneeFin, nombreJoursOuvres]\n      properties:\n        sousType:\n          $ref: '#/components/schemas/SousTypeConges'\n        demiJourneeDebut:\n          type: boolean\n        demiJourneeFin:\n          type: boolean\n        nombreJoursOuvres:\n          $ref: '#/components/schemas/Jours'\n    PageDemandeResponse:\n      type: object\n      required: [content, page]\n      properties:\n        content:\n          type: array\n          items:\n            $ref: '#/components/schemas/DemandeResponse'\n        page:\n          type: object\n          required: [size, number, totalElements, totalPages]\n          properties:\n            size:\n              type: integer\n            number:\n              type: integer\n            totalElements:\n              type: integer\n              format: int64\n            totalPages:\n              type: integer\n    SoldesConges:\n      type: object\n      required: [login, dateReference, soldes]\n      properties:\n        login:\n          type: string\n        dateReference:\n          type: string\n          format: date\n          description: Date du jour (Europe/Paris) utilisée pour choisir les périodes.\n        soldes:\n          type: array\n          items:\n            $ref: '#/components/schemas/SoldeConges'\n    SoldeConges:\n      type: object\n      required: [sousType, periodeDebut, periodeFin, acquis, pris, enCours, disponible]\n      properties:\n        sousType:\n          type: string\n          enum: [CP, RTT]\n        periodeDebut:\n          type: string\n          format: date\n        periodeFin:\n          type: string\n          format: date\n        acquis:\n          $ref: '#/components/schemas/Jours'\n        pris:\n          $ref: '#/components/schemas/Jours'\n        enCours:\n          $ref: '#/components/schemas/Jours'\n        disponible:\n          type: number\n          multipleOf: 0.5\n          description: acquis − pris − enCours ; négatif possible après une baisse des droits.\n    DecompteConges:\n      type: object\n      required: [dateDebut, dateFin, demiJourneeDebut, demiJourneeFin, nombreJoursOuvres, joursFeriesExclus]\n      properties:\n        dateDebut:\n          type: string\n          format: date\n        dateFin:\n          type: string\n          format: date\n        demiJourneeDebut:\n          type: boolean\n        demiJourneeFin:\n          type: boolean\n        nombreJoursOuvres:\n          $ref: '#/components/schemas/Jours'\n        joursFeriesExclus:\n          type: array\n          description: Jours fériés de la zone FR tombant un jour de semaine dans la période.\n          items:\n            $ref: '#/components/schemas/JourFerie'\n    JourFerie:\n      type: object\n      required: [date, libelle]\n      properties:\n        date:\n          type: string\n          format: date\n        libelle:\n          type: string\n    ProblemDetail:\n      type: object\n      description: Format d'erreur RFC 9457 produit par GlobalExceptionHandler.\n      required: [title, status]\n      properties:\n        type:\n          type: string\n          format: uri-reference\n          default: about:blank\n        title:\n          type: string\n        status:\n          type: integer\n          minimum: 400\n          maximum: 599\n        detail:\n          type: string\n        instance:\n          type: string\n          format: uri-reference\n        erreurs:\n          type: array\n          description: 'Détail des erreurs : « champ : message » (400) ou messages des règles métier (422).'\n          items:\n            type: string\n    ProblemDetailRegleMetier:\n      description: ProblemDetail 422 ; `erreurs` contient au moins un message.\n      allOf:\n        - $ref: '#/components/schemas/ProblemDetail'\n        - type: object\n          required: [erreurs]\n          properties:\n            erreurs:\n              type: array\n              minItems: 1\n              description: 'Messages des règles CONGES au format « CODE : texte » ; RegleGenerique (socle) peut ajouter un message sans code.'\n              items:\n                type: string\n  responses:\n    RequeteInvalide:\n      description: Requête syntaxiquement invalide (champ obligatoire, format, bornes).\n      content:\n        application/problem+json:\n          schema:\n            $ref: '#/components/schemas/ProblemDetail'\n          example:\n            type: about:blank\n            title: Requête invalide\n            status: 400\n            detail: Certains champs sont invalides.\n            instance: /api/demandes\n            erreurs:\n              - 'dateDebut : La date de début est obligatoire'\n    NonAuthentifie:\n      description: Authentification HTTP Basic absente ou invalide (corps géré par Spring Security).\n      headers:\n        WWW-Authenticate:\n          description: Schéma d'authentification attendu.\n          schema:\n            type: string\n    AccesRefuse:\n      description: Authentifié mais non autorisé (rôle insuffisant, soldes d'un autre collaborateur).\n      content:\n        application/problem+json:\n          schema:\n            $ref: '#/components/schemas/ProblemDetail'\n          example:\n            type: about:blank\n            title: Accès refusé\n            status: 403\n            detail: Accès refusé\n            instance: /api/conges/soldes\n    Introuvable:\n      description: Demande inexistante.\n      content:\n        application/problem+json:\n          schema:\n            $ref: '#/components/schemas/ProblemDetail'\n          example:\n            type: about:blank\n            title: Demande introuvable\n            status: 404\n            detail: Demande 999 introuvable\n            instance: /api/demandes/999\n    TransitionInvalide:\n      description: Transition de statut interdite (ex. modifier ou soumettre une demande déjà SOUMISE).\n      content:\n        application/problem+json:\n          schema:\n            $ref: '#/components/schemas/ProblemDetail'\n          example:\n            type: about:blank\n            title: Transition de statut invalide\n            status: 409\n            detail: Transition SOUMISE → SOUMISE interdite pour la demande 12\n            instance: /api/demandes/12/soumettre\n    RegleMetierNonRespectee:\n      description: Une ou plusieurs règles métier sont enfreintes.\n      content:\n        application/problem+json:\n          schema:\n            $ref: '#/components/schemas/ProblemDetailRegleMetier'\n          examples:\n            soldeInsuffisant:\n              summary: Cas C3 (RM-07)\n              value:\n                type: about:blank\n                title: Règles métier non respectées\n                status: 422\n                detail: La demande ne respecte pas les règles métier.\n                instance: /api/demandes\n                erreurs:\n                  - 'CONGES_SOLDE_INSUFFISANT : 8 jours demandés, 6 disponibles (RTT 2026)'\n            chevauchement:\n              summary: Cas C2 (RM-09)\n              value:\n                type: about:blank\n                title: Règles métier non respectées\n                status: 422\n                detail: La demande ne respecte pas les règles métier.\n                instance: /api/demandes\n                erreurs:\n                  - 'CONGES_CHEVAUCHEMENT : la période recoupe la demande n° 12 (du 2026-12-28 au 2026-12-30)'\n            plusieursRegles:\n              summary: RM-10 et RM-13\n              value:\n                type: about:blank\n                title: Règles métier non respectées\n                status: 422\n                detail: La demande ne respecte pas les règles métier.\n                instance: /api/demandes\n                erreurs:\n                  - 'CONGES_PREAVIS : 1 jour ouvré demandé, début au plus tôt le 2026-11-18 sauf urgence'\n                  - 'CONGES_MONTANT_INTERDIT : une demande de congés ne porte pas de montant'\n",
+  "matrice": [
+    {
+      "exigence": "EF-01",
+      "regles": "RM-01",
+      "scenarios": "`conges_saisie` › Le sous-type de congé est obligatoire (1)",
+      "contrat": "creerDemande, modifierDemande",
+      "taches": "T06, T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-01 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-02",
+      "regles": "RM-02",
+      "scenarios": "`conges_saisie` › Les dates de début et de fin… (3)",
+      "contrat": "creerDemande, modifierDemande",
+      "taches": "T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-02 ; `CongesApiIT` (dont 400 sans date de début)"
+    },
+    {
+      "exigence": "EF-03",
+      "regles": "RM-03, RM-04",
+      "scenarios": "`conges_saisie` › Une journée unique… (2) ; `conges_decompte` exemples « Demi-journées »",
+      "contrat": "creerDemande, simulerDecompteConges",
+      "taches": "T04, T07, T09",
+      "tests_prevus": "`CalendrierCongesTest` ; `RegleCongesTest` @Tag EF-03"
+    },
+    {
+      "exigence": "EF-04",
+      "regles": "RM-04",
+      "scenarios": "`conges_decompte` › Le décompte exclut… (plan, 7 exemples)",
+      "contrat": "creerDemande, consulterDemande, listerDemandes",
+      "taches": "T04, T06, T09",
+      "tests_prevus": "`CalendrierCongesTest` (paramétré) ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-05",
+      "regles": "RM-05",
+      "scenarios": "`conges_decompte` › Une période sans aucun jour ouvré… (2)",
+      "contrat": "creerDemande, modifierDemande, soumettreDemande",
+      "taches": "T04, T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-05 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-06",
+      "regles": "RM-06",
+      "scenarios": "`conges_decompte` › Une demande ne dépasse pas 20 jours ouvrés (2)",
+      "contrat": "creerDemande, modifierDemande, soumettreDemande",
+      "taches": "T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-06 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-07",
+      "regles": "RM-07",
+      "scenarios": "`conges_solde` › Une demande CP ou RTT ne dépasse pas le solde… (6)",
+      "contrat": "creerDemande, modifierDemande, soumettreDemande",
+      "taches": "T05, T07, T09",
+      "tests_prevus": "`SoldeCongesServiceTest` ; `RegleCongesTest` @Tag EF-07 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-08",
+      "regles": "RM-08",
+      "scenarios": "`conges_solde` › Une demande CP ou RTT reste dans une seule période (2)",
+      "contrat": "creerDemande, modifierDemande",
+      "taches": "T05, T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-08 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-09",
+      "regles": "RM-09",
+      "scenarios": "`conges_chevauchement` (2 règles, 7 scénarios dont 2 plans)",
+      "contrat": "creerDemande, modifierDemande, soumettreDemande",
+      "taches": "T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-09 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-10",
+      "regles": "RM-10, RM-11",
+      "scenarios": "`conges_preavis` (3 règles, 9 scénarios) ; `conges_saisie` › Toutes les règles enfreintes… (1)",
+      "contrat": "creerDemande, modifierDemande, soumettreDemande",
+      "taches": "T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-10 (horloge fixée) ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-11",
+      "regles": "RM-12",
+      "scenarios": "`conges_saisie` › Un congé sans solde exige un motif… (3)",
+      "contrat": "creerDemande, modifierDemande",
+      "taches": "T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-11 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-12",
+      "regles": "H-06",
+      "scenarios": "`conges_solde` › Les demandes soumises et validées sont en cours… (4)",
+      "contrat": "soumettreDemande, consulterSoldesConges",
+      "taches": "T05, T09",
+      "tests_prevus": "`SoldeCongesServiceTest` ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-13",
+      "regles": "H-11",
+      "scenarios": "`conges_solde` › Les soldes sont consultables… (2)",
+      "contrat": "consulterSoldesConges",
+      "taches": "T05, T08, T09",
+      "tests_prevus": "`CongesControllerIT` ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-14",
+      "regles": "RM-04",
+      "scenarios": "`conges_decompte` › Le décompte peut être simulé… (2)",
+      "contrat": "simulerDecompteConges",
+      "taches": "T04, T08, T09",
+      "tests_prevus": "`CongesControllerIT` ; `CongesApiIT`"
+    },
+    {
+      "exigence": "EF-15",
+      "regles": "—",
+      "scenarios": "`conges_formulaire` › Le formulaire guide la saisie d'un congé (3)",
+      "contrat": "consulterSoldesConges, simulerDecompteConges",
+      "taches": "T01, T10",
+      "tests_prevus": "`DemandeFormulaire.conges.test.tsx` (J4) ; `e2e/tests/conges.spec.ts` (J7)"
+    },
+    {
+      "exigence": "EF-16",
+      "regles": "RM-13",
+      "scenarios": "`conges_saisie` › Une demande de congés ne porte pas de montant (1) ; Toutes les règles enfreintes… (1)",
+      "contrat": "creerDemande, modifierDemande",
+      "taches": "T07, T09",
+      "tests_prevus": "`RegleCongesTest` @Tag EF-16 ; `CongesApiIT`"
+    },
+    {
+      "exigence": "ENF-01",
+      "regles": "—",
+      "scenarios": "—",
+      "contrat": "simulerDecompteConges, creerDemande, soumettreDemande, consulterSoldesConges",
+      "taches": "T02, T05",
+      "tests_prevus": "Mesure `http.server.requests` p95 (J10) ; revue des requêtes"
+    },
+    {
+      "exigence": "ENF-02",
+      "regles": "H-11",
+      "scenarios": "`conges_solde` › Les soldes d'un collaborateur sont confidentiels (2)",
+      "contrat": "consulterSoldesConges",
+      "taches": "T08, T09",
+      "tests_prevus": "`CongesControllerIT` (401, 403)"
+    },
+    {
+      "exigence": "ENF-03",
+      "regles": "—",
+      "scenarios": "`conges_decompte` › 2 scénarios @ENF-03",
+      "contrat": "simulerDecompteConges",
+      "taches": "T08, T09",
+      "tests_prevus": "`CongesControllerIT` (400 ProblemDetail, sans trace de pile)"
+    },
+    {
+      "exigence": "ENF-04",
+      "regles": "—",
+      "scenarios": "`conges_formulaire` › Le formulaire de congés est accessible (2)",
+      "contrat": "—",
+      "taches": "T10",
+      "tests_prevus": "Testing Library `getByLabelText`, focus ; `@axe-core/playwright` (J7)"
+    },
+    {
+      "exigence": "ENF-05",
+      "regles": "—",
+      "scenarios": "—",
+      "contrat": "—",
+      "taches": "T10",
+      "tests_prevus": "Test Vitest (3 champs à renseigner, titre prérempli) ; test utilisateur chronométré (J10)"
+    },
+    {
+      "exigence": "ENF-06",
+      "regles": "—",
+      "scenarios": "—",
+      "contrat": "—",
+      "taches": "T07",
+      "tests_prevus": "`RegleCongesTest` (compteur `SimpleMeterRegistry`) ; test de capture de logs"
+    },
+    {
+      "exigence": "ENF-07",
+      "regles": "H-12",
+      "scenarios": "—",
+      "contrat": "—",
+      "taches": "T04, T07",
+      "tests_prevus": "Tests avec `Clock.fixed` ; test à 23 h 30 UTC ; revue : aucun `LocalDate.now()` sans horloge"
+    },
+    {
+      "exigence": "ENF-08",
+      "regles": "C-01",
+      "scenarios": "—",
+      "contrat": "listerDemandes, consulterDemande",
+      "taches": "T06, T11",
+      "tests_prevus": "Tests du socle verts ; diff vide sur `legacy/`, `RegleGenerique`, `StatutDemande`"
+    }
+  ],
+  "plan": [
+    {
+      "id": "T00",
+      "nature": "H",
+      "tache": "Porte 4 : spécification, contrat et ADR acceptés",
+      "depend_de": [],
+      "exigences": [
+        "toutes"
+      ],
+      "fichiers": "`docs/specs/CONGES.md` (PRÊTE), ADR (Accepté)",
+      "verification": "`uv run --project labs/spec neospec valider --type CONGES` vert"
+    },
+    {
+      "id": "T01",
+      "nature": "D",
+      "tache": "Générer les types TypeScript du contrat",
+      "depend_de": [
+        "T00"
+      ],
+      "exigences": [
+        "EF-13",
+        "EF-14",
+        "EF-15"
+      ],
+      "fichiers": "`frontend/src/api/conges.generated.ts`",
+      "verification": "`npx openapi-typescript@7.13.0 docs/specs/conges/openapi/conges-delta.yaml -o frontend/src/api/conges.generated.ts` puis `npx tsc --noEmit` (dans `frontend/`)"
+    },
+    {
+      "id": "T02",
+      "nature": "A",
+      "tache": "Migration `V3__conges.sql` : tables `conges_detail`, `solde_conges`, `jour_ferie` ; données d'exemple (§10) ; index `demande (demandeur, type, statut)`",
+      "depend_de": [
+        "T00"
+      ],
+      "exigences": [
+        "EF-04",
+        "EF-07",
+        "EF-13",
+        "ENF-01"
+      ],
+      "fichiers": "`backend/src/main/resources/db/migration/V3__conges.sql`",
+      "verification": "`./mvnw test` vert (Flyway au démarrage H2) ; si un test du socle compte les demandes, déplacer la demande d'exemple dans un jeu de test (R-04)"
+    },
+    {
+      "id": "T03",
+      "nature": "A",
+      "tache": "Entités et repositories : `CongesDetail`, `SoldeConges`, `JourFerie` ; association `@OneToOne` sur `Demande` (ADR-003)",
+      "depend_de": [
+        "T02"
+      ],
+      "exigences": [
+        "EF-01",
+        "EF-03",
+        "ENF-08"
+      ],
+      "fichiers": "`conges/*.java`, `demande/Demande.java`",
+      "verification": "`./mvnw test` vert"
+    },
+    {
+      "id": "T04",
+      "nature": "A",
+      "tache": "`CalendrierConges` en TDD : décompte avec demi-journées et jours fériés `FR`, jours fériés exclus",
+      "depend_de": [
+        "T03"
+      ],
+      "exigences": [
+        "EF-03",
+        "EF-04",
+        "EF-05",
+        "EF-14"
+      ],
+      "fichiers": "`conges/CalendrierConges.java` + test",
+      "verification": "`./mvnw test -Dtest=CalendrierCongesTest` ; exemples de `conges_decompte.feature` repris tels quels"
+    },
+    {
+      "id": "T05",
+      "nature": "A",
+      "tache": "`SoldeCongesService` : périodes de référence, acquis, pris, en cours, disponible (ADR-002)",
+      "depend_de": [
+        "T03",
+        "T04"
+      ],
+      "exigences": [
+        "EF-07",
+        "EF-08",
+        "EF-12",
+        "EF-13"
+      ],
+      "fichiers": "`conges/SoldeCongesService.java` + test",
+      "verification": "`./mvnw test -Dtest=SoldeCongesServiceTest`"
+    },
+    {
+      "id": "T06",
+      "nature": "A",
+      "tache": "Extension des DTO et du mapper : `DemandeRequest.conges`, `DemandeResponse.conges`, `CongesMapper`",
+      "depend_de": [
+        "T03",
+        "T04"
+      ],
+      "exigences": [
+        "EF-01",
+        "EF-03",
+        "EF-04",
+        "ENF-08"
+      ],
+      "fichiers": "`demande/dto/*.java`, `demande/DemandeMapper.java`, `conges/CongesMapper.java`",
+      "verification": "`./mvnw test` vert ; `conges` null pour une demande GENERIQUE"
+    },
+    {
+      "id": "T07",
+      "nature": "A",
+      "tache": "`RegleConges` (RM-01 à RM-13), log et compteur, horloge Europe/Paris",
+      "depend_de": [
+        "T04",
+        "T05",
+        "T06"
+      ],
+      "exigences": [
+        "EF-01 à EF-11",
+        "EF-16",
+        "ENF-06",
+        "ENF-07"
+      ],
+      "fichiers": "`conges/RegleConges.java` + test",
+      "verification": "`./mvnw test -Dtest=RegleCongesTest` ; au moins un test par code d'erreur"
+    },
+    {
+      "id": "T08",
+      "nature": "A",
+      "tache": "`CongesController` : `GET /api/conges/soldes`, `GET /api/conges/decompte`, contrôle d'accès, 400 et 403 en ProblemDetail",
+      "depend_de": [
+        "T04",
+        "T05"
+      ],
+      "exigences": [
+        "EF-13",
+        "EF-14",
+        "ENF-02",
+        "ENF-03"
+      ],
+      "fichiers": "`conges/CongesController.java`, `conges/dto/*`",
+      "verification": "`./mvnw test -Dtest=CongesControllerIT`"
+    },
+    {
+      "id": "T09",
+      "nature": "A",
+      "tache": "Tests d'intégration API : un test par scénario `@api`, nommé comme le scénario",
+      "depend_de": [
+        "T07",
+        "T08"
+      ],
+      "exigences": [
+        "EF-01 à EF-14",
+        "EF-16",
+        "ENF-02",
+        "ENF-03"
+      ],
+      "fichiers": "`src/test/java/.../conges/CongesApiIT.java`",
+      "verification": "`./mvnw test -Dtest=CongesApiIT`"
+    },
+    {
+      "id": "T10",
+      "nature": "A",
+      "tache": "Formulaire CONGES : sous-type, dates, demi-journées, titre prérempli, décompte et solde via l'API, erreurs 422 reliées aux champs, accessibilité",
+      "depend_de": [
+        "T01"
+      ],
+      "exigences": [
+        "EF-15",
+        "ENF-04",
+        "ENF-05"
+      ],
+      "fichiers": "`frontend/src/pages/DemandeFormulaire.tsx`, `frontend/src/api/conges.ts` + tests",
+      "verification": "`npm test` ; `npm run lint`"
+    },
+    {
+      "id": "T11",
+      "nature": "D",
+      "tache": "Vérifications complètes",
+      "depend_de": [
+        "T09",
+        "T10"
+      ],
+      "exigences": [
+        "toutes"
+      ],
+      "fichiers": "—",
+      "verification": "`./mvnw verify` ; `npm test` ; `npm run lint` ; `uv run --project labs/spec neospec valider --type CONGES`"
+    },
+    {
+      "id": "T12",
+      "nature": "H",
+      "tache": "Revue du diff, matrice à jour (tests, commits), décision de fusion",
+      "depend_de": [
+        "T11"
+      ],
+      "exigences": [
+        "toutes"
+      ],
+      "fichiers": "`docs/specs/conges/MATRICE_TRACABILITE.md`",
+      "verification": "Chaque ligne de la matrice a une preuve verte ; aucun fichier hors de ce tableau"
+    }
+  ],
+  "adr": {
+    "titre": "Moment du débit et calcul du solde de congés",
+    "slug": "debit-solde-conges",
+    "contexte": "Le ticket NF-401 contient une contradiction : la DRH veut que le collaborateur voie son solde mis à jour « tout de suite » à la validation ; la paie veut que le solde ne soit débité qu'à l'intégration en paie, à la clôture de fin de mois. La paie est la référence des droits (acquis et pris historiques). Dans NeoFlow, la clôture d'une demande (`VALIDEE → CLOTUREE`, rôle ADMIN) matérialise cette intégration. Les transitions sont gérées par le socle, commun à toutes les variantes.",
+    "options": [
+      {
+        "nom": "A",
+        "description": "Débit : à la validation",
+        "avantages": "Transitions du socle : compteur `pris` mis à jour à chaque transition",
+        "inconvenients": "Désynchronisation : ❌ modifiées"
+      },
+      {
+        "nom": "B",
+        "description": "Débit : à la clôture",
+        "avantages": "Transitions du socle : compteur `pris` mis à jour à la clôture",
+        "inconvenients": "Désynchronisation : ❌ modifiée (clôture)"
+      },
+      {
+        "nom": "C",
+        "description": "Débit : « en cours » dès la soumission, « pris » à la clôture",
+        "avantages": "Transitions du socle : droits repris de la paie + consommation recalculée à partir des demandes",
+        "inconvenients": "Désynchronisation : ✅ inchangées"
+      }
+    ],
+    "recommandation": "**Option C.**\n\n- `solde_conges (login, sous_type, periode_debut, periode_fin, acquis, pris)` contient les droits et le pris **antérieurs à NeoFlow**, repris de la paie (migration V3) ; NeoFlow ne modifie jamais cette table.\n- `SoldeCongesService` calcule, pour un sous-type et une période :\n  - en cours = décompte des demandes `CONGES` du sous-type, au statut `SOUMISE` ou `VALIDEE`, dont `dateDebut` est dans la période ;\n  - pris = `solde_conges.pris` + décompte des demandes `CLOTUREE` de la période ;\n  - disponible = acquis − pris − en cours.\n- Une demande ne couvre qu'une période (RM-08) : pas d'imputation partielle.",
+    "consequences_negatives": "- Le décompte de chaque demande de la période est recalculé à chaque contrôle et consultation.\n- Le décompte d'une demande passée dépend de la table `jour_ferie` : les jours fériés d'une année sont chargés avant l'ouverture de la période et ne sont plus modifiés.",
+    "indicateur_remise_en_cause": "- Mise en place d'un import paie qui met à jour `pris` : les demandes clôturées seraient comptées deux fois ; il faudra alors ne plus ajouter les `CLOTUREE` ou dater la reprise (nouvel ADR).\n- p95 > 300 ms mesuré en J10, ou plus de 200 demandes par demandeur et par période : persister le décompte (colonne dans `conges_detail`).",
+    "exigences": [
+      "EF-07",
+      "EF-12",
+      "EF-13",
+      "ENF-01",
+      "ENF-08"
+    ]
+  }
+}

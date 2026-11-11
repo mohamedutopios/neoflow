@@ -1,0 +1,65 @@
+{
+  "diagnostic": [
+    {
+      "hypotheses": [
+        {
+          "id": "H1",
+          "cause": "CircuitValidationService.calculerNiveau (ligne 31) appelle doubleValue() sur un montant absent : le garde « montant null → 0.0 » attendu par le legacy manque",
+          "vraisemblance": 5,
+          "faitsPour": [
+            "F4",
+            "F5",
+            "F1"
+          ],
+          "faitsContre": [],
+          "refutation": "Une demande AVEC montant échoue de la même façon, ou le montant de la demande 101 n'est pas nul",
+          "test": {
+            "niveau": "unitaire",
+            "classe": "CircuitValidationServiceTest",
+            "methode": "demandeGeneriqueSansMontant_obtientLeNiveau1",
+            "assertion": "assertThat(circuit.calculerNiveau(sansMontant, 24)).isEqualTo(1)"
+          }
+        },
+        {
+          "id": "H2",
+          "cause": "Défaut d'authentification HTTP Basic (le temps passe dans le filtre de sécurité)",
+          "vraisemblance": 1,
+          "faitsPour": [
+            "F7"
+          ],
+          "faitsContre": [
+            "F1",
+            "F6"
+          ],
+          "refutation": "Le statut est 500 et non 401/403 ; le log d'erreur est écrit dans « secured request », après l'autorisation",
+          "test": {
+            "niveau": "api",
+            "classe": "RegressionJ07IT",
+            "methode": "soumettreAvecAuthentificationValide_renvoie200",
+            "assertion": "status().isOk() avec httpBasic(\"alice\", \"neoflow\")"
+          }
+        },
+        {
+          "id": "H3",
+          "cause": "Pool de connexions JDBC saturé pendant la soumission",
+          "vraisemblance": 3,
+          "faitsPour": [
+            "F9"
+          ],
+          "faitsContre": [],
+          "refutation": "Aucune erreur Hikari dans les logs",
+          "test": {
+            "niveau": "api",
+            "classe": "RegressionJ07IT",
+            "methode": "soumissionsConcurrentes",
+            "assertion": "aucune"
+          }
+        }
+      ],
+      "inconnues": [
+        "Depuis quand ? git log -p -S \"doubleValue\" -- backend/src/main/java/com/neosoft/neoflow/validation/",
+        "Toutes les demandes sans montant sont-elles touchées ? Rejouer avec une demande CONGES et une demande chiffrée"
+      ]
+    }
+  ]
+}

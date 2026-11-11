@@ -1,0 +1,82 @@
+# Réponses humaines aux questions de NF-401 (CONGES), rôle tenu par le formateur.
+# valider : l'hypothèse proposée est acceptée ; remplacer : l'humain la réécrit ; rejeter : refusée.
+# ajouts : questions vues après coup (relecture du pair, puis VARIANTES.md, lu APRÈS la liste issue du ticket).
+decideur: Sophie Garnier (DRH)
+date: '2026-11-16'
+decisions:
+  Q-01: valider
+  Q-02: valider
+  Q-03:
+    decision: remplacer
+    hypothese: 'Solde disponible = acquis − pris − en cours, par sous-type et par période de référence : CP du 1er
+      juin au 31 mai, RTT du 1er janvier au 31 décembre. La période est celle qui contient `dateDebut`.'
+  Q-04:
+    decision: remplacer
+    hypothese: Jours ouvrés = lundi à vendredi hors jours fériés de la table `jour_ferie` pour la zone `FR`. Tous
+      les collaborateurs sont rattachés à la zone `FR` en v1 ; les jours fériés `REUNION` sont chargés mais non
+      appliqués.
+  Q-05:
+    decision: remplacer
+    hypothese: 'La paie est la référence des droits : `acquis` et `pris` (historique antérieur à NeoFlow) sont repris
+      par migration. NeoFlow ne calcule pas l''acquisition et n''écrit pas dans la paie.'
+    decideur: Bertrand Collin (paie)
+  Q-06:
+    decision: remplacer
+    hypothese: Une demande `SOUMISE` ou `VALIDEE` compte « en cours » (le collaborateur voit immédiatement ce qui
+      lui reste) ; une demande `CLOTUREE` (intégrée en paie par l'admin) compte « pris » ; une demande `REFUSEE`
+      ou `BROUILLON` ne compte pas.
+    decideur: Sophie Garnier (DRH) et Bertrand Collin (paie)
+  Q-07:
+    decision: remplacer
+    hypothese: 'Chevauchement : une autre demande `CONGES` du même demandeur aux statuts `SOUMISE`, `VALIDEE` ou
+      `CLOTUREE` partage au moins une demi-journée. Les brouillons ne bloquent pas ; le contrôle est refait à la
+      soumission.'
+  Q-08:
+    decision: remplacer
+    hypothese: 'Préavis : au-delà de 5 jours ouvrés, `dateDebut` ≥ date du jour + 14 jours calendaires ; sinon `dateDebut`
+      ≥ date du jour + 2 jours ouvrés. Une demande `urgent` déroge au préavis, pas au solde, et ne commence jamais
+      avant la date du jour.'
+  Q-09: valider
+  Q-10:
+    decision: remplacer
+    hypothese: '`montant` doit être absent pour `CONGES` : un montant positif modifierait le niveau de validation
+      (règle du vendredi après-midi du legacy, NF-301).'
+    decideur: Tech lead NeoFlow
+  Q-11:
+    decision: remplacer
+    hypothese: Le solde est consultable par son titulaire ; les rôles `VALIDEUR` et `ADMIN` consultent celui de
+      tout collaborateur.
+  Q-12:
+    decision: valider
+    decideur: Tech lead NeoFlow
+ajouts:
+- question: Une demande peut-elle couvrir deux périodes de référence ?
+  source: Relecture du pair
+  priorite: Importante
+  decision: 'Non en v1 : une demande par période'
+  hypothese: 'Une demande CP ou RTT reste dans une seule période de référence (CP : pas de part et d''autre du 31
+    mai ; RTT : pas de part et d''autre du 31 décembre).'
+- question: Durée maximale d'une demande ?
+  source: VARIANTES (R5, non vu)
+  priorite: Importante
+  decision: 20 jours ouvrés (R5)
+- question: Un motif est-il obligatoire pour un congé sans solde ?
+  source: VARIANTES (R9, non vu)
+  priorite: Importante
+  decision: Oui, 20 caractères au moins
+  hypothese: '`SANS_SOLDE` : la description sert de motif ; au moins 20 caractères hors espaces de début et de fin.'
+- question: Les brouillons comptent-ils dans le contrôle de chevauchement ?
+  source: VARIANTES (point à trancher)
+  priorite: Importante
+  decision: Non ; contrôle refait à la soumission (H-07)
+- question: 'Décompte front et back : comment garantir le même résultat ?'
+  source: VARIANTES (point à trancher)
+  priorite: Importante
+  decision: Le back calcule seul ; le front appelle l'API
+  hypothese: Le décompte est calculé uniquement par le backend ; le formulaire appelle l'API de simulation. `NeoUtils.joursOuvres`
+    (legacy front, ignore les fériés) n'est pas utilisé.
+  decideur: Tech lead NeoFlow
+- question: 'Nouveaux arrivants (emma) : quel solde ?'
+  source: VARIANTES (point à trancher)
+  priorite: Confort
+  decision: Celui que fournit la paie (H-05)

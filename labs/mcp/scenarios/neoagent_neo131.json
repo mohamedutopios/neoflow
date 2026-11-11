@@ -1,0 +1,18 @@
+{
+  "modele": "simule-neoagent",
+  "description": "J06 : instruire NEO-131 avec les outils MCP (ticket, Git, RAG, base), vérifier un refus de lecture, puis proposer un commentaire soumis à l'Approbateur de neoagent.",
+  "tours": [
+    [{"texte": "Je lis le ticket."}, {"outil": "tickets_get_ticket", "entree": {"ticket_id": "NEO-131"}}],
+    [{"texte": "Je regarde l'historique récent."}, {"outil": "git_git_log", "entree": {"repo_path": ".", "max_count": 3}}],
+    [{"texte": "Je cherche le calcul du niveau de validation."},
+     {"outil": "rag_search_code", "entree": {"query": "calculerNiveau montant CircuitValidationService", "k": 3}}],
+    [{"texte": "Je lis les lignes exactes."},
+     {"outil": "rag_get_chunk", "entree": {"path": "backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java", "start_line": 1, "end_line": 60}}],
+    [{"texte": "Je vérifie que la table des jetons est bien hors périmètre."},
+     {"outil": "db_run_select", "entree": {"sql": "SELECT service, jeton FROM jeton_integration"}}],
+    [{"texte": "Je propose un commentaire ; il sera soumis à validation humaine."},
+     {"outil": "tickets_comment_ticket", "entree": {"ticket_id": "NEO-131", "idempotency_key": "NEO-131-neoagent-1",
+       "body": "Cause racine probable : conversion du montant nul dans CircuitValidationService.calculerNiveau (voir citations)."}}],
+    [{"texte": "Rapport : la conversion du montant est faite par CircuitValidationService.calculerNiveau ; la lecture de jeton_integration est refusée (table_non_autorisee) ; le commentaire a été soumis à validation."}]
+  ]
+}

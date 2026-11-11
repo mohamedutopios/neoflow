@@ -1,0 +1,19 @@
+# Régression des prompts du générateur de tests vérifié (J7, `tests-ia generer`) : pour une classe
+# figée et sa spécification, au moins un test est ACCEPTE (compile, passe, non tautologique) ; les
+# propositions restent dans --sortie (jamais dans src/test). Hors ligne (défaut) : réponses enregistrées
+# de labs/tests-ia (src/main/resources/offline/), aucun appel API. Le lanceur construit le lab au
+# premier appel (./mvnw package). PIT est coupé ici (--sans-mutation) : gardez-le pour la campagne réelle.
+id: PT01
+titre: tests-ia generer — tests de CircuitValidationService acceptés par le vérificateur
+outil: commande
+cible: labs/tests-ia (prompts de génération, boucle Generator–Verifier)
+commande: "${TESTS_IA_CMD:-labs/tests-ia/tests-ia} generer --projet backend --classe com.neosoft.neoflow.validation.CircuitValidationService --spec labs/tests-ia/specs/circuit-validation.md --sortie {dossier} --journal {journal} --tours 3 --sans-mutation {offline}"
+fichier_sortie: rapport-generation.md
+repetitions: 3
+seuil: "2/3"
+criteres:
+  - { id: C1, type: code_retour, attendu: 0 }
+  - { id: C2, type: sortie_contient, motifs: ['\| ACCEPTE \|', 'CircuitValidationService'] }
+  - { id: C3, type: commande, cmd: "find {dossier}/acceptes -name '*.java' | grep -q .", code_attendu: 0 }   # tests rangés par paquet
+  - { id: C4, type: commande, cmd: "git status --porcelain -- backend/src | grep -q . && exit 1 || exit 0", code_attendu: 0 }   # rien écrit dans les sources
+  - { id: C5, type: sans_erreur }

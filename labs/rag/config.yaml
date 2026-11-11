@@ -1,0 +1,124 @@
+# Configuration d'indexation du lab RAG NeoFlow (J05).
+# Les chemins relatifs sont résolus depuis ce fichier. Surcharges possibles par variables
+# d'environnement : NEOFLOW_REPO_ROOT, NEOFLOW_RAG_HOME, QDRANT_URL, OLLAMA_HOST.
+
+repo_root: ../..              # racine du dépôt NeoFlow
+storage_dir: .rag_index       # manifeste, chunks BM25, Qdrant embarqué (ignoré par Git)
+collection: neoflow
+
+# Composants écrits pendant les TP du J05 (« fichier.py:fonction », chemin relatif à ce fichier).
+# Vide : le lab utilise sa propre implémentation. Un composant qui renvoie None (ex. chunker pour un
+# langage non traité) rend la main au lab. Surcharge possible : NEOFLOW_RAG_CHUNKER_CODE, NEOFLOW_RAG_FUSION…
+composants:
+  chunker_code: ""        # TP 1 : tp/chunker_ast.py:decouper
+  fusion: ""              # TP 2 : tp/fusion.py:rrf
+  metriques: ""           # TP 3 : tp/metriques.py (recall_at_k, hit_at_k, reciprocal_rank, precision_at_k, mrr)
+  formateur_outil: ""     # TP 4 : tp/outil_rag.py:formater (sortie de l'outil RAG de l'agent)
+
+corpus:
+  # Liste blanche : on indexe ce qui aide à comprendre le projet, rien d'autre.
+  include:
+    - "README.md"
+    - "Makefile"
+    - "docs/**/*.md"
+    - "backend/pom.xml"
+    - "backend/src/main/java/**/*.java"
+    - "backend/src/test/java/**/*.java"
+    - "backend/src/main/resources/*.yml"
+    - "backend/src/main/resources/*.yaml"
+    - "backend/src/main/resources/db/migration/*.sql"
+    - "frontend/src/**/*.ts"
+    - "frontend/src/**/*.tsx"
+    - "frontend/src/**/*.js"
+    - "frontend/vite.config.ts"
+    - "frontend/package.json"
+    - "e2e/**/*.ts"
+    - "docker-compose.yml"
+    - ".github/workflows/*.yml"
+    - "labs/rag/corpus_extra/**/*.md"
+  # Toujours exclus, même s'ils sont dans la liste blanche (en plus du .gitignore).
+  exclude:
+    - "**/.env"
+    - "**/.env.*"
+    - "**/secrets/**"
+    - "**/*-prod.yml"
+    - "**/*.min.js"
+    - "**/node_modules/**"
+    - "**/target/**"
+    - "**/dist/**"
+    - "**/package-lock.json"
+  max_file_kb: 256            # au-delà : probablement généré ou des données
+  redact_secrets: true        # masque les valeurs de type password/token/api-key avant indexation
+
+chunking:
+  code:
+    strategy: ast             # ast (Tree-sitter) | lines (fenêtres fixes, pour comparer)
+    parser_backend: auto      # auto | wheels | language-pack
+    small_type_lines: 60      # type <= 60 lignes : un seul chunk ; sinon résumé + méthodes
+    max_lines: 80             # méthode plus longue : fenêtres de 80 lignes...
+    overlap_lines: 5          # ...avec 5 lignes de recouvrement
+    class_summary: true       # chunk « squelette » (champs + signatures) pour les gros types
+    min_lines: 4              # membres adjacents de 4 lignes ou moins (accesseurs) regroupés
+  docs:
+    max_lines: 60             # une section Markdown par chunk, redécoupée au-delà
+  config:
+    max_lines: 40             # YAML par clé de 1er niveau, SQL par instruction, autres par fenêtres
+    overlap_lines: 5
+
+embedding:
+  provider: auto              # auto (Ollama si joignable, sinon fastembed) | ollama | fastembed
+  ollama:
+    base_url: http://localhost:11434
+    model: nomic-embed-text   # ollama pull nomic-embed-text (768 dimensions)
+  fastembed:
+    model: nomic-ai/nomic-embed-text-v1.5-Q   # même famille, ONNX quantifié, ~130 Mo
+  query_prefix: "search_query: "        # préfixes de tâche attendus par nomic-embed-text
+  document_prefix: "search_document: "
+  batch_size: 32
+  # Métadonnées ajoutées au code dans le texte embarqué. Mesuré sur le jeu de référence (J05) :
+  # avec path + members, Recall@5 hybride 0,42 ; sans, 0,50 (le chemin dilue l'embedding du code).
+  # BM25 indexe toujours chemin + symbole + membres.
+  metadata_keys: [symbol, kind, doc_title]
+
+qdrant:
+  url: http://localhost:6333  # serveur (docker compose --profile ia up -d qdrant)
+  prefer_server: true         # serveur si joignable, sinon Qdrant embarqué dans storage_dir
+
+acl:
+  default: projet
+  rules:                      # étiquette portée par chaque chunk, filtrable à la recherche
+    - label: interne-securite
+      paths: ["backend/src/main/java/**/security/**", "docs/securite/**"]
+
+search:
+  default_mode: hybrid
+  candidates: 30              # profondeur de chaque liste avant fusion
+  rrf_k: 60                   # constante RRF (Cormack et al., 2009)
+  hybrid_rankers: [vector, bm25]   # ajouter native pour une fusion à trois
+  weights: {vector: 1.0, bm25: 1.0, native: 1.0}
+  max_per_file: 2             # diversité : au plus 2 passages par fichier dans le top-k
+  exclude_status: [obsolete]  # documents marqués « statut: obsolete » en front matter
+  allowed_acl: []             # vide = toutes étiquettes ; ex. [projet] pour masquer interne-securite
+  native_context_lines: 4     # lignes de contexte autour d'une correspondance ripgrep
+  rerank:
+    enabled: false            # re-ranking facultatif (cross-encoder local, téléchargement ~0,6 Go)
+    model: BAAI/bge-reranker-v2-m3-int8
+    top_n: 20                 # nombre de candidats fusionnés re-classés
+    max_chars: 1500           # passage tronqué pour le cross-encoder (coût quadratique en longueur)
+
+llm:                          # repondre.py et eval.py --faithfulness
+  fournisseur: offline        # offline (défaut : déterministe, sans réseau) | anthropic | ollama | neogen
+  juge: offline               # juge de fidélité : offline (heuristique) | anthropic | ollama | neogen
+  anthropic:                  # Claude, clé ANTHROPIC_API_KEY
+    answer_model: claude-sonnet-5-5
+    judge_model: claude-opus-5-5
+    max_tokens: 16000         # plafond (raisonnement compris), pas une consommation
+  ollama:                     # API compatible OpenAI d'Ollama (local ou serveur d'équipe)
+    base_url: http://localhost:11434/v1
+    modele: llama3.2:3b       # exemple : un modèle présent dans `ollama list`
+    max_tokens: 800
+  neogen:                     # plateforme souveraine Neosoft (vLLM), API compatible OpenAI
+    base_url: https://neogen.example.internal/v1
+    modele: qwen3-coder       # exemple : catalogue NéoGen
+    api_key_env: NEOGEN_API_KEY
+    max_tokens: 800

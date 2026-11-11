@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Extrait fictif d'un rapport JaCoCo (backend NeoFlow, branche feat/stat-types). Seuls les compteurs
+     de niveau rapport sont lus par metriques_git.py ; un vrai rapport contient aussi les packages. -->
+<report name="neoflow-backend">
+  <sessioninfo id="neoflow-ci-1" start="1793790000000" dump="1793790090000"/>
+  <package name="com/neosoft/neoflow/demande">
+    <counter type="LINE" missed="58" covered="331"/>
+  </package>
+  <counter type="INSTRUCTION" missed="2310" covered="6904"/>
+  <counter type="BRANCH" missed="141" covered="262"/>
+  <counter type="LINE" missed="512" covered="1559"/>
+  <counter type="METHOD" missed="96" covered="402"/>
+  <counter type="CLASS" missed="4" covered="71"/>
+</report>

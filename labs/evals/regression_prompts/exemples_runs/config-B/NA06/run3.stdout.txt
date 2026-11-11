@@ -1,0 +1,24 @@
+{
+  "pattern": "generator_verifier",
+  "mode": "structure",
+  "offline": false,
+  "statut": "echec_verification",
+  "tours": 3,
+  "verdicts": [
+    {
+      "ok": false,
+      "commande": "./mvnw -q verify",
+      "duree_s": 74.0
+    },
+    {
+      "ok": false,
+      "commande": "./mvnw -q verify",
+      "duree_s": 74.0
+    },
+    {
+      "ok": false,
+      "commande": "./mvnw -q verify",
+      "duree_s": 74.0
+    }
+  ]
+}

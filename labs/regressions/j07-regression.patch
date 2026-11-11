@@ -1,0 +1,35 @@
+Régression du TP fil rouge J07 (tests, debugging).
+Injection : make regression-on (scripts/injecter-regression.sh) ; retrait : make regression-off.
+Ne lisez pas ce fichier avant d'avoir terminé votre diagnostic par les logs, les traces et les tests.
+
+diff -ruN a/backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java b/backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+--- a/backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
++++ b/backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+@@ -67,12 +67,13 @@
+     /**
+      * Liste paginée, filtrée par statut et type (filtres facultatifs).
+      *
+-     * @param page numéro de page, la première page est 0
++     * @param page numéro de page (1 pour la première page, 0 est accepté)
+      * @param size taille de page
+      */
+     @Transactional(readOnly = true)
+     public Page<DemandeResponse> lister(StatutDemande statut, TypeDemande type, int page, int size) {
+-        PageRequest pageRequest = PageRequest.of(page, size, TRI);
++        int index = page > 0 ? page - 1 : 0;
++        PageRequest pageRequest = PageRequest.of(index, size, TRI);
+         return demandeRepository.findAll(DemandeRepository.avecFiltres(statut, type), pageRequest)
+                 .map(mapper::versResponse);
+     }
+diff -ruN a/backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java b/backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java
+--- a/backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java
++++ b/backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java
+@@ -28,7 +28,7 @@
+      * Niveau de validation (1 à 3) de la demande, calculé par {@link RegleValidationLegacy}.
+      */
+     public int calculerNiveau(Demande d, int ancienneteMois) {
+-        Double montant = d.getMontant() != null ? d.getMontant().doubleValue() : 0.0;
++        Double montant = d.getMontant().doubleValue();
+         return RegleValidationLegacy.determinerNiveau(d.getType().name(), montant, ancienneteMois, d.getDepartement(), d.isUrgent());
+     }
+ 

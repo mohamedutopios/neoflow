@@ -1,0 +1,5 @@
+# Contexte de build de la sandbox = racine du dépôt : n'envoyer au démon Docker QUE ce que le Dockerfile copie.
+# (BuildKit lit <Dockerfile>.dockerignore placé à côté du Dockerfile.) Évite d'embarquer .env, target/, node_modules/.
+*
+!labs/mcp/pyproject.toml
+!labs/mcp/uv.lock

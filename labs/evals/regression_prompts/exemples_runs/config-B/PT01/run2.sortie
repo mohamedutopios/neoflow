@@ -1,0 +1,20 @@
+# Génération de tests vérifiée — com.neosoft.neoflow.validation.CircuitValidationService
+
+Modèle : simulé (offline) · tours : 2 · tokens entrée/sortie/lus en cache : 2225 / 0 / 0
+
+| Tour | Classe | Verdict | Exigence | Motifs |
+|---|---|---|---|---|
+| 1 | CircuitValidationServiceCoherenceIaTest | REJETE_TAUTOLOGIE | CV-02 : cohérence avec le legacy | niveauCoherentAvecLeLegacy : oracle recalculé par le code testé (RegleValidationLegacy.determinerNiveau("GENERIQUE", 0.0, 24, "RH", false) dans la valeur attendue) ; l'attendu doit venir de la spécification |
+| 1 | CircuitValidationServiceUrgenteIaTest | REJETE_COMPILATION | CV-04 : urgente hors DSI | ligne 28 : cannot find symbol   symbol:   method setUrgence(boolean)   location: variable d of type com.neosoft.neoflow.demande.Demande |
+| 1 | CircuitValidationServiceRobusteIaTest | REJETE_TAUTOLOGIE | CV-01 : pas d'exception sans montant | calculerNiveau_neLevePas : assertion constante (assertThat(true)) ; calculerNiveau_neLevePas : exception avalée (catch vide) : un défaut qui lève une exception passe inaperçu |
+| 1 | CircuitValidationServiceSansMontantIaTest | REJETE_TAUTOLOGIE | CV-01, CV-02 : demande GENERIQUE sans montant | assertion constante : l'attendu reprend la valeur calculée par le code testé |
+| 1 | CircuitValidationServiceCongesNouveauIaTest | ROUGE_A_ARBITRER | CV-03 : CONGES, moins de 3 mois d'ancienneté | congesNouvelArrivant_obtientLeNiveau1 -> org.opentest4j.AssertionFailedError:  expected: 1  but was: 2 |
+| 2 | CircuitValidationServiceUrgenteRhIaTest | REJETE_TAUTOLOGIE | CV-04 : urgente hors DSI | assertion constante : l'attendu reprend la valeur calculée par le code testé |
+| 2 | CircuitValidationServiceCongesIaTest | REJETE_TAUTOLOGIE | CV-03 : CONGES, 24 mois d'ancienneté | assertion constante : l'attendu reprend la valeur calculée par le code testé |
+| 2 | CircuitValidationServiceAncienneteIaTest | REJETE_TAUTOLOGIE | CV-06 : mois révolus | assertion constante : l'attendu reprend la valeur calculée par le code testé |
+| 2 | CircuitValidationServiceAncienneteAbsentIaTest | REJETE_TAUTOLOGIE | CV-06 : collaborateur absent | assertion constante : l'attendu reprend la valeur calculée par le code testé |
+
+**À arbitrer par un humain** : ces tests échouent sur le code actuel. Défaut réel (test de reproduction) ou oracle faux ? Relire l'exigence citée avant toute décision.
+
+## Questions du modèle (comportements non spécifiés)
+- Règle « vendredi après 14 h » du legacy : hors spécification (horloge système), aucun test proposé. Faut-il la caractériser au J8 ?

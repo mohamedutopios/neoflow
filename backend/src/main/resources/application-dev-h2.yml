@@ -1,0 +1,8 @@
+# Profil dev-h2 : poste sans Docker. Base H2 en mémoire (réinitialisée à chaque démarrage par Flyway).
+# Les traces ne sont pas exportées ; le traceId reste présent dans les logs.
+# Pour exporter vers un Jaeger local : --management.otlp.tracing.endpoint=http://localhost:4318/v1/traces
+spring:
+  datasource:
+    url: jdbc:h2:mem:neoflow;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""

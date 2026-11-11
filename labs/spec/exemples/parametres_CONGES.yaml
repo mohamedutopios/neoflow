@@ -1,0 +1,6 @@
+# Types de paramètres Cucumber personnalisés pour la variante CONGES (vocabulaire de ETAPES.md).
+# Chaque alternative trouvée dans le texte d'une étape devient {nom} dans l'expression.
+types:
+  sousType: [CP, RTT, SANS_SOLDE]
+  debut: ["au matin", "l'après-midi"]
+  fin: ["au soir", "à midi"]

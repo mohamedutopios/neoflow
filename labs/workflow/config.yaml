@@ -1,0 +1,68 @@
+# Configuration du lab workflow J09 (valeurs par défaut, surchargeables par --config fichier.yaml).
+# Identifiants de modèles : voir la documentation Anthropic (claude-haiku-5-5, claude-sonnet-5-5, claude-opus-5-5).
+
+modeles:
+  routage: claude-haiku-5-5        # choix de source, reformulation (effort low)
+  redaction: claude-sonnet-5-5     # synthèse citée + proposition d'action (effort medium)
+  fallbacks_refus: true            # repli serveur si le modèle décline (API Claude directe ; false pour désactiver)
+
+budget:                            # budget d'exécution PAR THREAD (au-delà : escalade humaine)
+  appels_llm: 6
+  tokens: 40000
+
+limites:
+  recursion_limit: 25              # filet de sécurité LangGraph : nombre max de super-steps
+  max_relances: 2                  # agentic RAG : changements de source si preuves insuffisantes
+  timeout_source_s: 20             # timeout dur par appel de source (git, lab RAG)
+  timeout_llm_s: 60                # timeout par requête Claude
+
+retries:                           # RetryPolicy LangGraph sur rechercher et proposer_action
+  max_tentatives: 3                # tentative initiale comprise
+  intervalle_initial_s: 0.2
+  facteur: 2.0
+  jitter: true
+
+preuves:
+  k: 5
+  min_resultats: 2                 # preuves fraîches minimales (code, documents)
+  min_resultats_git: 1             # un commit suffit pour une question d'historique
+  couverture_min: 0.5              # part des termes de la question retrouvés dans les preuves
+
+actions_sensibles:                 # toute action listée passe par interrupt + approbation humaine
+  - commenter_ticket
+  - deleguer_neoagent              # appel coûteux à l'agent du J4 : approuvé comme un effet
+
+portee_defaut: projet:neoflow       # portée mémoire : projet:, client:, equipe:, utilisateur:
+
+routage:
+  glossaire: {}                    # terme métier -> termes du code, ex. {arrondi: ["Math.round"]} (expansion déterministe)
+
+extensions:                        # composants codés en TP (fichier.py:fonction), null = référence du lab
+  politique_memoire: null          # TP1 : refuser ou accepter une écriture mémoire
+  verdict_souvenir: null           # TP1 : revalidé / relocalisé / invalidé après un changement
+  routeur: null                    # TP2 : question -> (source | None, motif)
+  source_suivante: null            # TP2 : chaîne de repli
+  noeuds: null                     # TP3 : module avec approbation, executer_action, apres_verification
+  classer_changements: null        # TP4 : delta Git -> à indexer / à supprimer / ignorés
+
+neoagent:                          # délégation à l'agent du J4 (labs/agent), outils en lecture seule
+  chemin_lab: ../agent
+  modele: claude-sonnet-5-5
+  max_etapes: 15
+  budget_tokens: 60000
+
+rag:
+  activer: auto                    # auto : lab RAG J05 s'il est présent ; non : repli BM25 local
+  chemin_lab: ../rag
+
+memoire:
+  ttl_jours:                       # expiration par défaut (null = pas de TTL, invalidation Git seule)
+    episodique: 30
+    semantique: 90
+    procedurale: null
+
+reindex:
+  inclure: ["**/*.java", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.md", "**/*.yml", "**/*.yaml", "**/*.sql"]
+  exclure: ["**/node_modules/**", "**/target/**", "**/dist/**", "**/.etat/**", "**/*.min.js"]
+  taille_max_ko: 200
+  lignes_par_chunk_simule: 40

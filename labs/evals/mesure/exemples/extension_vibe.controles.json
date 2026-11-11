@@ -1,0 +1,65 @@
+{
+  "racine": "/home/stagiaire07/wt/vibe-conges",
+  "base": "main",
+  "date": "2026-11-04T10:10:41+01:00",
+  "note": "exemple fictif",
+  "controles": [
+    {
+      "nom": "backend verify",
+      "commande": "cd backend && ./mvnw -q verify",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "[INFO] Tests run: 57, Failures: 0 — aucun test nouveau",
+      "duree_s": 71.4
+    },
+    {
+      "nom": "frontend test",
+      "commande": "npm test --prefix frontend -- --run",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "Tests  29 passed",
+      "duree_s": 12.2
+    },
+    {
+      "nom": "e2e",
+      "commande": "npx playwright test e2e/tests/calendrier-equipe.spec.ts",
+      "code": null,
+      "statut": "ABSENT",
+      "extrait": "aucun fichier e2e/tests/calendrier-equipe.spec.ts"
+    },
+    {
+      "nom": "semgrep",
+      "commande": "semgrep scan --config p/java --config p/react --error --quiet backend/src frontend/src",
+      "code": 1,
+      "statut": "KO",
+      "extrait": "1 finding: java.spring.security.audit.spring-unvalidated-redirect … CalendrierController.java:41",
+      "duree_s": 28.0
+    },
+    {
+      "nom": "gitleaks",
+      "commande": "gitleaks dir . --no-banner --redact",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "no leaks found",
+      "duree_s": 3.1
+    },
+    {
+      "nom": "tests ajoutés",
+      "commande": "git diff --name-only --diff-filter=A main...HEAD | grep -cE …",
+      "code": 0,
+      "statut": "MESURE",
+      "extrait": "0",
+      "duree_s": 0.1,
+      "valeur": 0
+    },
+    {
+      "nom": "fichiers modifiés",
+      "commande": "git diff --name-only main...HEAD | wc -l",
+      "code": 0,
+      "statut": "MESURE",
+      "extrait": "3",
+      "duree_s": 0.1,
+      "valeur": 3
+    }
+  ]
+}

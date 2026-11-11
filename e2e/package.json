@@ -1,0 +1,18 @@
+{
+  "name": "neoflow-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:list": "playwright test --list",
+    "test:ui": "playwright test --ui",
+    "installer-navigateurs": "playwright install chromium",
+    "rapport": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "20.19.43",
+    "typescript": "5.9.3"
+  }
+}

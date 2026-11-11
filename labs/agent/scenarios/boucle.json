@@ -1,0 +1,9 @@
+{
+  "description": "Démo 4 : le modèle relit trois fois le même fichier avec la même entrée ; la détection de boucle arrête la session (statut boucle).",
+  "tours": [
+    [{"outil": "lire_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java"}}],
+    [{"texte": "Je relis pour être sûr."}, {"outil": "lire_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java"}}],
+    [{"texte": "Encore une fois."}, {"outil": "lire_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java"}}],
+    [{"texte": "Jamais atteint."}]
+  ]
+}

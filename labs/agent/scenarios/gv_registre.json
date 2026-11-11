@@ -1,0 +1,14 @@
+{
+  "modele": "simule-neoagent",
+  "description": "Generator–Verifier sur le socle : bogue injecté dans RegleMetierRegistry (règles GENERIQUE ignorées). Le générateur conclut trop vite au tour 1, le vérificateur Maven le contredit, le générateur corrige au tour 2.",
+  "tours": [
+    [{"texte": "Je lis le registre des règles."},
+     {"outil": "lire_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java"}}],
+    [{"texte": "Le registre filtre les règles par type : le comportement me paraît correct, rien à modifier."}],
+    [{"texte": "Le test appliqueLesReglesGeneriquesATousLesTypes échoue : les règles GENERIQUE doivent s'appliquer à tous les types. Je corrige le filtre."},
+     {"outil": "editer_fichier", "entree": {"chemin": "backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java",
+       "ancien": ".filter(regle -> regle.type() == type)",
+       "nouveau": ".filter(regle -> regle.type() == TypeDemande.GENERIQUE || regle.type() == type)"}}],
+    [{"texte": "Corrigé : le filtre conserve les règles GENERIQUE puis celles du type (contrat de RegleMetierDemande). Fichier modifié : RegleMetierRegistry.java. Message de commit proposé : fix(regles): règles génériques appliquées à tous les types."}]
+  ]
+}

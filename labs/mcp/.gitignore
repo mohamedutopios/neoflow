@@ -1,0 +1,8 @@
+# Données d'exécution du lab : journaux d'audit, base SQLite générée, état des tickets
+var/
+.venv/
+__pycache__/
+.pytest_cache/
+*.db
+*.db-journal
+java/**/target/

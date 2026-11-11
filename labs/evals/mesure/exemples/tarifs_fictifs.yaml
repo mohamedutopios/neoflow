@@ -1,0 +1,10 @@
+# TARIFS FICTIFS — utilisés uniquement pour les exemples de ce dossier.
+# Unités de coût arbitraires (UC) par million de tokens : NE REFLÈTENT AUCUN PRIX RÉEL.
+# Pour vos mesures : ../tarifs.example.yaml renseigné depuis la page tarifs.
+devise: UC
+date_releve: "2026-11-04"
+source: "fictif (formation NSS+ J10)"
+modeles:
+  claude-sonnet-5-5:   { input: 1.0, output: 5.0,  cache_read: 0.10, cache_write: 1.25 }
+  claude-opus-5-5:     { input: 2.0, output: 10.0, cache_read: 0.20, cache_write: 2.50 }
+  claude-haiku-5-5:    { input: 0.3, output: 1.5,  cache_read: 0.03, cache_write: 0.40 }

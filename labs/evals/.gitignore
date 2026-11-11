@@ -1,0 +1,7 @@
+# Enregistrements bruts des runs (code, chemins, sorties d'outils) : on versionne les synthèses relues.
+resultats/runs/
+resultats/*.json
+!resultats/reference*.json
+.venv/
+__pycache__/
+mesure/tarifs.yaml

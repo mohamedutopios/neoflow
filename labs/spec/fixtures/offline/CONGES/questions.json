@@ -1,0 +1,167 @@
+{
+  "questions": [
+    {
+      "id": "Q-01",
+      "question": "Quels sous-types de congés gérer, et lesquels sont soumis au solde ?",
+      "source": "Ticket : « congés payés et RTT, et aussi les congés sans solde de temps en temps »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-01",
+        "enonce": "Sous-types CP, RTT et SANS_SOLDE ; CP et RTT sont soumis au solde, SANS_SOLDE ne l'est pas."
+      }
+    },
+    {
+      "id": "Q-02",
+      "question": "Quelles demi-journées autoriser (début l'après-midi, fin à midi) et quel pas de décompte ?",
+      "source": "Ticket : « on doit pouvoir poser des demi-journées comme dans l'ancien intranet »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-02",
+        "enonce": "Le premier jour peut commencer l'après-midi et le dernier finir à midi ; décompte par pas de 0,5 jour."
+      }
+    },
+    {
+      "id": "Q-03",
+      "question": "« Assez de jours » : quel calcul du solde disponible, sur quelle période de référence ?",
+      "source": "Ticket : « il faut vérifier que la personne a assez de jours avant d'envoyer la demande »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-03",
+        "enonce": "Solde disponible = acquis − pris − en cours, par sous-type, sur l'année civile."
+      }
+    },
+    {
+      "id": "Q-04",
+      "question": "Quels jours fériés exclure du décompte, et pour quelles agences (« toutes les agences ») ?",
+      "source": "Ticket : « les jours sont comptés en jours ouvrés, comme d'habitude » ; « C'est valable pour toutes les agences »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-04",
+        "enonce": "Les jours fériés légaux de France métropolitaine sont exclus pour toutes les agences."
+      }
+    },
+    {
+      "id": "Q-05",
+      "question": "Comment NeoFlow obtient-il les soldes, puisque la paie est la référence ?",
+      "source": "Ticket : « Les soldes de chacun sont dans le logiciel de paie, c'est la référence »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-05",
+        "enonce": "NeoFlow lit chaque nuit un export des soldes de la paie."
+      }
+    },
+    {
+      "id": "Q-06",
+      "question": "Le solde est-il débité à la validation par le manager ou à l'intégration en paie à la clôture ?",
+      "source": "Ticket : « quand c'est validé le solde […] doit être mis à jour tout de suite » contre le commentaire de Bertrand Collin : « débité qu'une fois les congés intégrés dans la paie »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-06",
+        "enonce": "Le solde est débité à la validation par le manager."
+      }
+    },
+    {
+      "id": "Q-07",
+      "question": "« Pas deux fois les mêmes jours » : avec quels statuts et à quelle granularité (jour ou demi-journée) ?",
+      "source": "Ticket : « on ne doit pas pouvoir poser deux fois les mêmes jours »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-07",
+        "enonce": "Refus si une autre demande CONGES du même demandeur, hors refusées, partage au moins un jour."
+      }
+    },
+    {
+      "id": "Q-08",
+      "question": "« Délai de prévenance raisonnable » : combien de jours, et qu'est-ce qu'un « cas exceptionnel » ?",
+      "source": "Ticket : « il faut respecter un délai de prévenance raisonnable, sauf cas exceptionnels »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-08",
+        "enonce": "Préavis de 14 jours calendaires ; une demande marquée urgente y déroge."
+      }
+    },
+    {
+      "id": "Q-09",
+      "question": "« Simple et rapide, pas plus long qu'un mail » : quelle cible mesurable ?",
+      "source": "Ticket : « Il faut que ce soit simple et rapide pour les collaborateurs »",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-09",
+        "enonce": "Une demande standard se saisit en moins de 60 secondes, avec au plus trois champs à renseigner."
+      }
+    },
+    {
+      "id": "Q-10",
+      "question": "Le champ montant du socle a-t-il un sens pour une demande de congés ?",
+      "source": "Socle : DemandeRequest.montant ; RegleValidationLegacy (règle du vendredi après-midi si montant > 0)",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-10",
+        "enonce": "Le montant doit être absent pour une demande CONGES."
+      }
+    },
+    {
+      "id": "Q-11",
+      "question": "Qui peut consulter le solde d'un collaborateur ?",
+      "source": "Ticket : « pour qu'il voie ce qui lui reste » (accès non précisé)",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-11",
+        "enonce": "Le solde est visible de son titulaire et des valideurs."
+      }
+    },
+    {
+      "id": "Q-12",
+      "question": "Dans quel fuseau évaluer « la date du jour » pour le préavis ?",
+      "source": "Socle : NeoflowApplication déclare Clock.systemDefaultZone()",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-12",
+        "enonce": "La date du jour est évaluée dans le fuseau Europe/Paris à partir du bean Clock horloge du socle."
+      }
+    }
+  ],
+  "contradictions": [
+    {
+      "passages": [
+        "« quand c'est validé le solde du collaborateur doit être mis à jour tout de suite »",
+        "Bertrand Collin : « le solde ne doit être débité qu'une fois les congés intégrés dans la paie, à la clôture de fin de mois »"
+      ],
+      "explication": "La DRH et la paie demandent deux moments de débit différents (Q-06)."
+    },
+    {
+      "passages": [
+        "« congés payés et RTT, et aussi les congés sans solde »",
+        "« vérifier que la personne a assez de jours »"
+      ],
+      "explication": "Un congé sans solde n'a pas de solde à vérifier (Q-01)."
+    }
+  ],
+  "risques": [
+    {
+      "id": "R-01",
+      "risque": "Décompte faux si les jours fériés ne sont pas tous chargés",
+      "mitigation": "Table de référence chargée par année et testée"
+    },
+    {
+      "id": "R-02",
+      "risque": "Écarts entre NeoFlow et les bulletins si le moment du débit n'est pas tranché",
+      "mitigation": "Décision écrite DRH et paie (Q-06)"
+    },
+    {
+      "id": "R-03",
+      "risque": "L'agent d'implémentation réutilise le calcul de jours ouvrés du legacy front, qui ignore les fériés",
+      "mitigation": "Exigence explicite sur la source du décompte"
+    }
+  ],
+  "termes_a_chiffrer": [
+    {
+      "terme": "simple et rapide",
+      "question": "Combien de champs et combien de secondes pour une demande standard ?"
+    },
+    {
+      "terme": "délai de prévenance raisonnable",
+      "question": "Combien de jours, calendaires ou ouvrés ?"
+    }
+  ]
+}

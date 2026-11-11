@@ -1,0 +1,253 @@
+# Jeu de questions de référence du RAG NeoFlow (créé en J05, rejoué en J10).
+#
+# Format d'une question :
+#   id            identifiant stable (ne jamais réutiliser un id supprimé)
+#   categorie     type de requête, sert au « meilleur choix par type » du TP
+#   question      formulation telle qu'un développeur la poserait
+#   expected      fichiers qu'il FAUT lire pour répondre (base du Recall@k) ; symbol facultatif
+#   also_relevant fichiers utiles mais non indispensables (comptent pour Hit@k, MRR, Précision@k)
+#   evidence      chaînes dont la présence dans un passage du top-k prouve que le contexte suffit
+#   obsolete      documents connus pour contredire le code (ne doivent pas passer devant la vérité)
+#   answer_keywords  éléments attendus dans une réponse générée (eval.py --faithfulness)
+#
+# Chemins relatifs à la racine du dépôt. Ajouter en fin de fichier 3 à 5 questions propres à votre
+# variante (ids V01, V02...), avec les fichiers attendus vérifiés à la main (rg, git grep, LSP).
+
+version: 1
+corpus: neoflow
+questions:
+  - id: Q01
+    categorie: localisation
+    question: "Où est calculé le niveau de validation d'une demande au moment de la soumission ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java
+        symbol: CircuitValidationService.calculerNiveau
+      - path: backend/src/main/java/com/neosoft/neoflow/legacy/RegleValidationLegacy.java
+        symbol: RegleValidationLegacy.determinerNiveau
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+    evidence: ["determinerNiveau"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+    answer_keywords: ["CircuitValidationService", "RegleValidationLegacy"]
+
+  - id: Q02
+    categorie: identifiant
+    question: "TransitionInvalideException"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/common/TransitionInvalideException.java
+      - path: backend/src/main/java/com/neosoft/neoflow/common/GlobalExceptionHandler.java
+    also_relevant:
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+      - backend/src/main/java/com/neosoft/neoflow/demande/StatutDemande.java
+      - backend/src/main/java/com/neosoft/neoflow/demande/Demande.java
+    evidence: ["TransitionInvalideException"]
+
+  - id: Q03
+    categorie: regle-metier
+    question: "Quelles transitions de statut sont autorisées pour une demande ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/demande/StatutDemande.java
+    also_relevant:
+      - backend/src/main/java/com/neosoft/neoflow/demande/Demande.java
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+      - docs/architecture/ARCHITECTURE.md
+      - labs/rag/corpus_extra/faq/FAQ_DEVELOPPEURS.md
+    evidence: ["CLOTUREE"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+    answer_keywords: ["BROUILLON", "SOUMISE", "VALIDEE", "REFUSEE", "CLOTUREE"]
+
+  - id: Q04
+    categorie: securite
+    question: "Quel rôle peut approuver ou rejeter une demande, et qui peut la clôturer ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/security/SecurityConfig.java
+    also_relevant:
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeController.java
+      - labs/rag/corpus_extra/faq/FAQ_DEVELOPPEURS.md
+      - docs/architecture/ARCHITECTURE.md
+    evidence: ["VALIDEUR"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+    answer_keywords: ["VALIDEUR", "ADMIN"]
+
+  - id: Q05
+    categorie: regle-metier
+    question: "Comment est calculé le montant remboursable d'une dépense (plafonds repas, hôtel, kilomètres) ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/legacy/CalculRemboursementLegacy.java
+        symbol: CalculRemboursementLegacy.calculer
+    evidence: ["25.5"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+    answer_keywords: ["repas", "hotel", "kilometrique"]
+
+  - id: Q06
+    categorie: configuration
+    question: "Où est configuré l'export des traces OpenTelemetry vers Jaeger ?"
+    expected:
+      - path: backend/src/main/resources/application-dev.yml
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/resources/application.yml
+      - backend/src/main/resources/application-dev-h2.yml
+      - backend/pom.xml
+      - docker-compose.yml
+    evidence: ["otlp"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+    answer_keywords: ["otlp", "4318"]
+
+  - id: Q07
+    categorie: api
+    question: "La pagination de la liste des demandes commence-t-elle à 0 ou à 1 ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/demande/DemandeController.java
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+      - frontend/src/api/client.ts
+      - frontend/src/pages/DemandesListe.tsx
+      - labs/rag/corpus_extra/faq/FAQ_DEVELOPPEURS.md
+    evidence: ["PageRequest"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+
+  - id: Q08
+    categorie: extension
+    question: "Comment ajouter une règle métier propre à un type de demande pour ma variante ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierDemande.java
+      - path: backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java
+    also_relevant:
+      - backend/src/main/java/com/neosoft/neoflow/regles/RegleGenerique.java
+      - labs/rag/corpus_extra/faq/FAQ_DEVELOPPEURS.md
+      - docs/architecture/ARCHITECTURE.md
+    evidence: ["verifier"]
+    answer_keywords: ["RegleMetierDemande", "verifier"]
+
+  - id: Q09
+    categorie: decision-historique
+    question: "Pourquoi une demande chiffrée passe-t-elle au niveau 2 le vendredi après-midi ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/legacy/RegleValidationLegacy.java
+      - path: labs/rag/corpus_extra/decisions/HISTORIQUE_REGLES_VALIDATION.md
+    evidence: ["NF-301"]
+    answer_keywords: ["NF-301", "2016"]
+
+  - id: Q10
+    categorie: decision-historique
+    question: "Une demande urgente du département DSI monte-t-elle d'un niveau de validation ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/legacy/RegleValidationLegacy.java
+      - path: labs/rag/corpus_extra/decisions/HISTORIQUE_REGLES_VALIDATION.md
+    evidence: ["NF-287"]
+    answer_keywords: ["NF-287", "DSI"]
+
+  - id: Q11
+    categorie: localisation
+    question: "Où est enregistré l'historique des actions (journal d'audit) d'une demande ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/demande/EvenementDemande.java
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/java/com/neosoft/neoflow/demande/EvenementDemandeRepository.java
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeController.java
+      - backend/src/main/resources/db/migration/V1__schema.sql
+    evidence: ["EvenementDemande"]
+
+  - id: Q12
+    categorie: donnees
+    question: "Quelles colonnes contient la table des demandes et où est-elle créée ?"
+    expected:
+      - path: backend/src/main/resources/db/migration/V1__schema.sql
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/java/com/neosoft/neoflow/demande/Demande.java
+    evidence: ["niveau_validation"]
+
+  - id: Q13
+    categorie: donnees
+    question: "D'où vient l'ancienneté du demandeur utilisée pour calculer le niveau de validation ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java
+        symbol: CircuitValidationService.ancienneteMois
+      - path: backend/src/main/java/com/neosoft/neoflow/collaborateur/Collaborateur.java
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/java/com/neosoft/neoflow/collaborateur/CollaborateurRepository.java
+      - backend/src/main/resources/db/migration/V1__schema.sql
+      - backend/src/main/resources/db/migration/V2__donnees_demo.sql
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+    evidence: ["ancienneteMois"]
+    answer_keywords: ["collaborateur", "date"]
+
+  - id: Q14
+    categorie: frontend
+    question: "Comment le frontend appelle-t-il l'API REST et transmet-il les identifiants ?"
+    expected:
+      - path: frontend/src/api/client.ts
+    also_relevant:
+      - frontend/vite.config.ts
+    evidence: ["/api"]
+
+  - id: Q15
+    categorie: frontend
+    question: "Quelles fonctions de formatage des montants et des dates existent côté frontend ?"
+    expected:
+      - path: frontend/src/legacy/utils-legacy.js
+    also_relevant:
+      - labs/rag/corpus_extra/bibliotheque/NEO_UTILS.md
+    evidence: ["formatMontant"]
+    answer_keywords: ["formatMontant", "formatDate"]
+
+  - id: Q16
+    categorie: tests
+    question: "Quel test de bout en bout couvre la création puis la soumission d'une demande ?"
+    expected:
+      - path: e2e/tests/parcours-demande.spec.ts
+    also_relevant:
+      - e2e/playwright.config.ts
+    evidence: ["test("]
+
+  - id: Q17
+    categorie: securite
+    question: "Les endpoints Actuator sont-ils exposés sans authentification ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/security/SecurityConfig.java
+      - path: backend/src/main/resources/application.yml
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+    evidence: ["actuator"]
+    obsolete: [labs/rag/corpus_extra/architecture/DAT_NEOFLOW_v1.4.md]
+
+  - id: Q18
+    categorie: api
+    question: "Que renvoie l'API quand une règle métier refuse la création d'une demande ?"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/common/GlobalExceptionHandler.java
+    also_relevant:
+      - docs/architecture/ARCHITECTURE.md
+      - backend/src/main/java/com/neosoft/neoflow/common/RegleMetierException.java
+      - backend/src/main/java/com/neosoft/neoflow/regles/RegleMetierRegistry.java
+      - labs/rag/corpus_extra/faq/FAQ_DEVELOPPEURS.md
+    evidence: ["UNPROCESSABLE", "422"]
+    answer_keywords: ["422"]
+
+  - id: Q19
+    categorie: configuration
+    question: "Comment démarrer le backend sans Docker avec une base H2 en mémoire ?"
+    expected:
+      - path: backend/src/main/resources/application-dev-h2.yml
+    also_relevant:
+      - Makefile
+      - README.md
+      - backend/src/main/resources/application.yml
+      - labs/rag/corpus_extra/faq/FAQ_DEVELOPPEURS.md
+    evidence: ["h2:mem", "backend-h2"]
+
+  - id: Q20
+    categorie: identifiant
+    question: "PageRequest.of"
+    expected:
+      - path: backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java
+    also_relevant:
+      - backend/src/main/java/com/neosoft/neoflow/demande/DemandeController.java
+    evidence: ["PageRequest.of"]

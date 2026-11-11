@@ -1,0 +1,17 @@
+# Extension de variante CONGES (calendrier d'équipe), mode vibe : prototype puis relevé (exemple fictif).
+tache: "Extension J10 CONGES — calendrier d'équipe — neoagent --mode vibe (sans spécification ni vérificateur)"
+participant: stagiaire-07
+variante: CONGES
+configuration: "neoagent 1.4, --mode vibe, pattern react, approbateur automatique (branche jetable)"
+debut: "2026-11-04T09:48:00+01:00"
+fin: "2026-11-04T10:12:00+01:00"       # prototype affiché + relevé des défauts terminé
+reprises:
+  - { type: revue_humaine, duree_min: 12, cause: "Relevé Oublis / Dette / Tests / Sécurité sur le diff du prototype" }
+defauts:
+  - { id: V1, description: "Un collaborateur voit les absences de tous les départements (contrôle d'accès absent)", detecte_par: revue_humaine, severite: bloquant, phase: avant_pr }
+  - { id: V2, description: "Demi-journées ignorées : une demi-journée compte pour une journée", detecte_par: revue_humaine, severite: majeur, phase: avant_pr }
+  - { id: V3, description: "Week-ends comptés dans le seuil « plus de deux absents »", detecte_par: revue_humaine, severite: majeur, phase: avant_pr }
+  - { id: V4, description: "Requête par jour du mois (31 requêtes), logique dans le contrôleur", detecte_par: revue_humaine, severite: mineur, phase: avant_pr }
+  - { id: V5, description: "Aucun test ajouté ; ./mvnw verify vert uniquement grâce aux tests existants", detecte_par: revue_humaine, severite: majeur, phase: avant_pr }
+  - { id: V6, description: "Motif de l'absence affiché à tous (donnée personnelle)", detecte_par: revue_humaine, severite: majeur, phase: avant_pr }
+notes: "Prototype non livrable : sert à fixer l'interface et les questions de la spécification CONG-EXT-CALENDRIER."

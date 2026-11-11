@@ -1,0 +1,26 @@
+# Réponses de démonstration (NF-402), rôle tenu par le formateur.
+decideur: Julien Roche (contrôle de gestion)
+date: '2026-11-16'
+decisions:
+  Q-01: valider
+  Q-02: valider
+  Q-03:
+    decision: rejeter
+    motif: Décision reportée à l'ADR sur l'arrondi, après caractérisation du calcul existant
+  Q-04:
+    decision: remplacer
+    hypothese: Justificatif obligatoire pour toute ligne dont le montant déclaré dépasse 15,00 €, sauf KILOMETRIQUE.
+    decideur: Julien Roche et Nadia Ferhat
+  Q-05:
+    decision: remplacer
+    hypothese: Date de dépense comprise entre la date de soumission moins 90 jours calendaires et la date de soumission.
+  Q-06:
+    decision: valider
+    decideur: Nadia Ferhat (comptabilité)
+  Q-07: valider
+  Q-08: valider
+  Q-09:
+    decision: remplacer
+    hypothese: 'Justificatif : PDF, JPEG ou PNG, 5 Mo au plus, un fichier par ligne ; type vérifié sur le contenu
+      du fichier.'
+  Q-10: valider

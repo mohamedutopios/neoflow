@@ -1,0 +1,66 @@
+{
+  "racine": "/home/stagiaire07/wt/feat-conges-calendrier",
+  "base": "main",
+  "date": "2026-11-04T11:10:02+01:00",
+  "note": "exemple fictif",
+  "controles": [
+    {
+      "nom": "backend verify",
+      "commande": "cd backend && ./mvnw -q verify",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "[INFO] Tests run: 66, Failures: 0",
+      "duree_s": 84.9
+    },
+    {
+      "nom": "frontend test",
+      "commande": "npm test --prefix frontend -- --run",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "Tests  31 passed",
+      "duree_s": 13.0
+    },
+    {
+      "nom": "e2e",
+      "commande": "npx playwright test e2e/tests/calendrier-equipe.spec.ts",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "2 passed (14.2s)",
+      "duree_s": 16.4
+    },
+    {
+      "nom": "semgrep",
+      "commande": "semgrep scan --config p/java --config p/react --error --quiet backend/src frontend/src",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "Aucun résultat",
+      "duree_s": 31.5
+    },
+    {
+      "nom": "gitleaks",
+      "commande": "gitleaks dir . --no-banner --redact",
+      "code": 0,
+      "statut": "OK",
+      "extrait": "no leaks found",
+      "duree_s": 3.0
+    },
+    {
+      "nom": "tests ajoutés",
+      "commande": "git diff --name-only --diff-filter=A main...HEAD | grep -cE …",
+      "code": 0,
+      "statut": "MESURE",
+      "extrait": "4",
+      "duree_s": 0.1,
+      "valeur": 4
+    },
+    {
+      "nom": "fichiers modifiés",
+      "commande": "git diff --name-only main...HEAD | wc -l",
+      "code": 0,
+      "statut": "MESURE",
+      "extrait": "9",
+      "duree_s": 0.1,
+      "valeur": 9
+    }
+  ]
+}

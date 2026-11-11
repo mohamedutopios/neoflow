@@ -1,0 +1,6 @@
+# Fins de ligne normalisées : les scripts shell doivent rester en LF, y compris sous Windows.
+* text=auto
+*.sh text eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
+*.patch text eol=lf

@@ -1,0 +1,29 @@
+[project]
+name = "neoflow-lab-agent"
+version = "1.0.0"
+description = "Lab J04 NeoFlow : neoagent, agent de développement codé avec l'API Claude (tool use, patterns, worktrees, garde-fous)"
+requires-python = ">=3.11"
+dependencies = [
+    # Borne haute explicite : un changement majeur du SDK se fait par une revue, pas par hasard.
+    "anthropic>=1.0,<2",
+]
+
+[project.scripts]
+neoagent = "neoagent.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[build-system]
+requires = ["hatchling>=1.25,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neoagent"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "maven: lance Maven sur une copie du socle NeoFlow (lent ; NEOAGENT_TESTS_MAVEN=1 et NEOFLOW_RACINE)",
+]

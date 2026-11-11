@@ -1,0 +1,10 @@
+{
+  "description": "Worker front (démo 3, TP 3) : crée les types de l'API conges dans son worktree.",
+  "tours": [
+    [{"texte": "Je crée les types de l'API conges d'après le contrat."},
+     {"outil": "editer_fichier", "entree": {"chemin": "frontend/src/api/conges.ts",
+       "nouveau": "// Types du contrat conges-delta.yaml (EF-13, EF-14).\nexport type SousTypeConges = 'CP' | 'RTT' | 'SANS_SOLDE';\n\nexport interface DecompteConges {\n  dateDebut: string;\n  dateFin: string;\n  nombreJoursOuvres: number;\n}\n"}}],
+    [{"outil": "git_diff", "entree": {"stat": true}}],
+    [{"texte": "Voie front : types de l'API conges créés dans frontend/src/api/conges.ts."}]
+  ]
+}

@@ -1,0 +1,15 @@
+# Même extension, mode structure : spécification du J3, Generator–Verifier, tests et scans (exemple fictif).
+tache: "Extension J10 CONGES — calendrier d'équipe — neoagent --mode structure"
+participant: stagiaire-07
+variante: CONGES
+configuration: "labs/spec (spec CONG-EXT-CALENDRIER), neoagent 1.4 --mode structure, pattern generator_verifier, approbation humaine"
+debut: "2026-11-04T10:25:00+01:00"     # début de la spécification avec l'assistant du J3
+fin: "2026-11-04T11:12:00+01:00"       # PR ouverte, CI verte
+reprises:
+  - { type: specification, duree_min: 14, cause: "Spec avec l'assistant du J3 : 4 ambiguïtés tranchées (départements, demi-journées, fériés, motif)" }
+  - { type: approbation, duree_min: 8, cause: "Neuf demandes d'écriture approuvées" }
+  - { type: revue_humaine, duree_min: 9, cause: "Diff complet, rapport de l'évaluateur, résultats des scans" }
+defauts:
+  - { id: S1, description: "Libellé de légende non traduit (« absent » au lieu de « absence »)", detecte_par: revue_humaine, severite: mineur, phase: avant_pr }
+couverture: { avant: 75.3, apres: 77.9 }
+notes: "Jours fériés hors périmètre : documentés comme limite, ticket NF-401-c."

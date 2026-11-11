@@ -1,0 +1,18 @@
+# Prix par million de tokens, PAR MODÈLE, à recopier depuis la page tarifs (jamais de mémoire).
+#   Anthropic : https://www.anthropic.com/pricing (onglet API) — vérifier le modèle exact et la date.
+# Copier en mesure/tarifs.yaml (ignoré par Git), renseigner, puis :
+#   uv run mesure/mesurer.py journal.jsonl --tarifs mesure/tarifs.yaml
+#
+# Formule (couts.py) : coût = Σ_m (input × p_input + output × p_output
+#                                  + cache_read × p_cache_read + cache_creation × p_cache_write) / 10⁶
+# Les champs viennent de `usage` des réponses de l'API : input_tokens, output_tokens,
+# cache_read_input_tokens, cache_creation_input_tokens. La page tarifs exprime souvent la lecture et
+# l'écriture du cache relativement au prix input (et l'écriture selon la durée de vie du cache) :
+# reportez ici les prix effectifs.
+devise: USD
+date_releve: null      # AAAA-MM-JJ
+source: null           # URL exacte
+modeles:
+  claude-sonnet-5-5:   { input: null, output: null, cache_read: null, cache_write: null }
+  claude-opus-5-5:     { input: null, output: null, cache_read: null, cache_write: null }
+  claude-haiku-5-5:    { input: null, output: null, cache_read: null, cache_write: null }

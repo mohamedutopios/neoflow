@@ -1,0 +1,15 @@
+{
+  "racine": "/tmp/rr-NA04-2/wt",
+  "fichiers_git": [
+    "backend/src/test/java/com/neosoft/neoflow/regles/RegleGeneriqueTest.java",
+    "backend/src/main/java/com/neosoft/neoflow/regles/RegleGenerique.java"
+  ],
+  "controles": {
+    "C4": {
+      "cmd": "cd backend && ./mvnw -q verify",
+      "code": 0,
+      "extrait": "code de sortie 0\n[INFO] Tests run: 38, Failures: 0, Errors: 0, Skipped: 0\n[INFO] BUILD SUCCESS"
+    }
+  },
+  "code_retour": 0
+}

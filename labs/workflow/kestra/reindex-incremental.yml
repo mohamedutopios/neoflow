@@ -1,0 +1,172 @@
+# Flow Kestra : réindexation incrémentale du RAG NeoFlow déclenchée par un push Git.
+#
+# Version visée : Kestra 1.x (types io.kestra.plugin.core.*, plugins git et scripts officiels).
+# Vérifié structurellement (YAML, ids, types) par tests/test_kestra_flow.py, NON exécuté sur une
+# instance Kestra pendant la rédaction : valider avec l'éditeur Kestra ou `kestra flow validate`
+# sur la version installée (2.0.x publiée à date) avant la démo.
+#
+# Rôle : automatisation DÉTERMINISTE. Aucun LLM ici. Le raisonnement (quelle source, quelle
+# action, faut-il demander une approbation) reste dans le workflow LangGraph (workflow.py).
+#
+# Déclenchement : webhook appelé par la forge (GitHub/GitLab) sur push :
+#   POST {kestra}/api/v1/main/executions/webhook/neosoft.neoflow/reindex-incremental/{cle}
+#   (« main » = tenant par défaut de Kestra OSS ; les versions anciennes n'ont pas de segment tenant)
+# Le corps JSON d'un push GitHub fournit ref, before, after.
+
+id: reindex-incremental
+namespace: neosoft.neoflow
+description: |
+  Git -> extraction -> embeddings/index -> validation. Calcule le delta entre le dernier commit
+  indexé et le commit poussé, réindexe uniquement les fichiers touchés, invalide les mémoires
+  d'agent devenues obsolètes et n'avance le pointeur « dernier commit indexé » qu'après validation.
+
+labels:
+  formation: nssplus-j09
+  projet: neoflow
+
+inputs:
+  - id: commit_avant
+    type: STRING
+    required: false
+    description: SHA de départ (sinon corps du webhook, sinon KV neoflow_dernier_commit_indexe)
+  - id: commit_apres
+    type: STRING
+    defaults: HEAD
+  - id: branche
+    type: STRING
+    defaults: main
+  - id: simulation
+    type: BOOLEAN
+    defaults: true
+    description: true = index simulé (démo sans Qdrant) ; false = indexeur du lab RAG J05
+
+variables:
+  depot_url: https://git.example.internal/neosoft/neoflow.git
+  # Ordre de priorité : webhook > saisie manuelle > dernier commit validé (KV) > réindexation complète.
+  avant: "{{ trigger.body.before ?? inputs.commit_avant ?? kv('neoflow_dernier_commit_indexe', errorOnMissing=false) ?? '' }}"
+  apres: "{{ trigger.body.after ?? inputs.commit_apres }}"
+  ref: "{{ trigger.body.ref ?? ('refs/heads/' ~ inputs.branche) }}"
+  lab: labs/workflow
+  # NB : .etat-kestra (index simulé, mémoire) vit le temps de l'exécution. En production, l'index est
+  # Qdrant et la mémoire un service partagé (base, serveur MCP mémoire) : le flow ne fait qu'orchestrer.
+
+# Deux pushes rapprochés ne réindexent jamais en parallèle : le second attend.
+concurrency:
+  limit: 1
+  behavior: QUEUE
+
+tasks:
+  - id: filtrer_branche
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ render(vars.ref) == ('refs/heads/' ~ inputs.branche) }}"
+    then:
+      - id: espace_travail
+        type: io.kestra.plugin.core.flow.WorkingDirectory
+        tasks:
+          - id: cloner
+            type: io.kestra.plugin.git.Clone
+            url: "{{ vars.depot_url }}"
+            branch: "{{ inputs.branche }}"
+            depth: 200                      # assez d'historique pour calculer le delta
+            username: "{{ secret('GIT_USERNAME') }}"
+            password: "{{ secret('GIT_TOKEN') }}"
+            timeout: PT5M
+
+          - id: planifier
+            type: io.kestra.plugin.scripts.python.Commands
+            taskRunner:
+              type: io.kestra.plugin.scripts.runner.docker.Docker
+            containerImage: python:3.12-bookworm   # image avec git
+            beforeCommands:
+              - git config --global --add safe.directory '*'
+              - pip install --quiet pyyaml pydantic
+            env:
+              NEOFLOW_ETAT: .etat-kestra   # dans le WorkingDirectory partagé par les tâches
+            commands:
+              - >-
+                python {{ vars.lab }}/reindex_incremental.py --depot . --kestra plan
+                --depuis "{{ render(vars.avant) }}" --jusqu-a "{{ render(vars.apres) }}" --sortie plan.json
+            outputFiles:
+              - plan.json
+            timeout: PT5M
+
+          - id: si_changements
+            type: io.kestra.plugin.core.flow.If
+            condition: "{{ (outputs.planifier.vars.nb_a_indexer + outputs.planifier.vars.nb_a_supprimer) > 0 }}"
+            then:
+              - id: indexer
+                type: io.kestra.plugin.scripts.python.Commands
+                taskRunner:
+                  type: io.kestra.plugin.scripts.runner.docker.Docker
+                containerImage: python:3.12-bookworm
+                beforeCommands:
+                  - git config --global --add safe.directory '*'
+                  - pip install --quiet pyyaml pydantic
+                  - if [ -f labs/rag/pyproject.toml ]; then pip install --quiet -e labs/rag; fi
+                env:
+                  NEOFLOW_ETAT: .etat-kestra   # dans le WorkingDirectory partagé par les tâches
+                  OLLAMA_HOST: "{{ secret('OLLAMA_HOST') }}"
+                  QDRANT_URL: "{{ secret('QDRANT_URL') }}"
+                commands:
+                  - >-
+                    python {{ vars.lab }}/reindex_incremental.py --depot . --kestra
+                    {{ inputs.simulation ? '--simulation' : '' }} appliquer --plan plan.json --rapport rapport_index.json
+                outputFiles:
+                  - rapport_index.json
+                retry:                          # erreurs transitoires (Ollama, Qdrant) : tentatives bornées
+                  type: exponential
+                  interval: PT30S
+                  maxInterval: PT5M
+                  maxAttempts: 3
+                  warningOnRetry: true
+                timeout: PT20M
+
+              - id: valider
+                type: io.kestra.plugin.scripts.python.Commands
+                taskRunner:
+                  type: io.kestra.plugin.scripts.runner.docker.Docker
+                containerImage: python:3.12-bookworm
+                beforeCommands:
+                  - git config --global --add safe.directory '*'
+                  - pip install --quiet pyyaml pydantic
+                  - if [ -f labs/rag/pyproject.toml ]; then pip install --quiet -e labs/rag; fi
+                env:
+                  NEOFLOW_ETAT: .etat-kestra   # dans le WorkingDirectory partagé par les tâches
+                  QDRANT_URL: "{{ secret('QDRANT_URL') }}"
+                commands:
+                  # code retour 2 si l'index ne reflète pas la cible : la tâche échoue, le KV n'avance pas
+                  - >-
+                    python {{ vars.lab }}/reindex_incremental.py --depot . --kestra
+                    {{ inputs.simulation ? '--simulation' : '' }} valider --plan plan.json --rapport rapport_validation.json
+                outputFiles:
+                  - rapport_validation.json
+                timeout: PT10M
+
+            else:
+              - id: rien_a_indexer
+                type: io.kestra.plugin.core.log.Log
+                message: "Aucun fichier indexable modifié entre {{ render(vars.avant) }} et {{ render(vars.apres) }}."
+
+          - id: memoriser_commit
+            type: io.kestra.plugin.core.kv.Set
+            key: neoflow_dernier_commit_indexe
+            value: "{{ outputs.planifier.vars.cible }}"
+            overwrite: true
+    else:
+      - id: branche_ignoree
+        type: io.kestra.plugin.core.log.Log
+        message: "Push sur {{ render(vars.ref) }} ignoré : seule la branche {{ inputs.branche }} est indexée."
+
+errors:
+  - id: alerter
+    type: io.kestra.plugin.core.log.Log
+    level: ERROR
+    message: >-
+      Réindexation NeoFlow en échec (exécution {{ execution.id }}). Le pointeur KV n'a pas avancé :
+      le prochain push reprendra le même delta. Voir rapport_validation.json.
+
+triggers:
+  - id: push_git
+    type: io.kestra.plugin.core.trigger.Webhook
+    # La clé fait partie de l'URL et sert de seul secret : générer une valeur aléatoire longue.
+    key: a-remplacer-par-une-cle-aleatoire-longue

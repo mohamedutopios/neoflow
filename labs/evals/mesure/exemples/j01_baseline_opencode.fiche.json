@@ -1,0 +1,117 @@
+{
+  "source": "opencode",
+  "fichier": "mesure/exemples/j01_baseline_statistiques_statut.json",
+  "tache": "J1 baseline — GET /api/demandes/statistiques (nombre de demandes par statut), avec test",
+  "sessions": [
+    "ses_8b6ddca4b5fbWhfapdktBAVn94"
+  ],
+  "configuration": "OpenCode 1.19.0",
+  "statut_fin": "termine",
+  "duree_session_min": 25.0,
+  "delai_bout_en_bout_min": 46.0,
+  "source_delai": "journal (ticket lu → PR prête)",
+  "etapes": null,
+  "appels_llm": null,
+  "usage": {
+    "input_tokens": 79,
+    "output_tokens": 4092,
+    "cache_read_input_tokens": 459572,
+    "cache_creation_input_tokens": 36467
+  },
+  "usage_par_modele": {
+    "claude-sonnet-5-5": {
+      "input_tokens": 79,
+      "output_tokens": 4092,
+      "cache_read_input_tokens": 459572,
+      "cache_creation_input_tokens": 36467
+    }
+  },
+  "appels_outils": 19,
+  "familles": {
+    "edition": 10,
+    "shell": 5,
+    "lecture": 4
+  },
+  "outils": {
+    "edit": 8,
+    "bash": 5,
+    "read": 4,
+    "write": 2
+  },
+  "executions_tests": 5,
+  "ecritures": 10,
+  "refus": 0,
+  "approbations": {
+    "total": null,
+    "refusees": null
+  },
+  "relances": 3,
+  "reprises": {
+    "nombre": 4,
+    "minutes": 21.0,
+    "par_type": {
+      "correction_manuelle": {
+        "nombre": 1,
+        "minutes": 4.0
+      },
+      "relance_prompt": {
+        "nombre": 2,
+        "minutes": 9.0
+      },
+      "revue_humaine": {
+        "nombre": 1,
+        "minutes": 8.0
+      }
+    }
+  },
+  "defauts": {
+    "total": 4,
+    "avant_pr": 3,
+    "apres_pr": 1,
+    "detail": [
+      {
+        "id": "D1",
+        "description": "Réponse en Map<String, Long> au lieu d'un DTO typé (contrat OpenAPI flou)",
+        "detecte_par": "revue_humaine",
+        "severite": "mineur",
+        "phase": "avant_pr"
+      },
+      {
+        "id": "D2",
+        "description": "Statuts sans demande absents de la réponse (le front affichait undefined)",
+        "detecte_par": "revue_humaine",
+        "severite": "majeur",
+        "phase": "avant_pr"
+      },
+      {
+        "id": "D3",
+        "description": "Une requête COUNT par statut (5 requêtes) au lieu d'une requête groupée",
+        "detecte_par": "revue_humaine",
+        "severite": "mineur",
+        "phase": "avant_pr"
+      },
+      {
+        "id": "D4",
+        "description": "Endpoint absent du contrat OpenAPI de docs/specs (écart signalé par le pair en revue de PR)",
+        "detecte_par": "revue_pr_pair",
+        "severite": "mineur",
+        "phase": "apres_pr"
+      }
+    ]
+  },
+  "couverture": {
+    "avant": 61.2,
+    "apres": 63.0
+  },
+  "fichiers_modifies": [
+    "backend/src/main/java/com/neosoft/neoflow/demande/DemandeController.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/DemandeRepository.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/DemandeService.java",
+    "backend/src/main/java/com/neosoft/neoflow/demande/dto/StatistiquesResponse.java",
+    "backend/src/test/java/com/neosoft/neoflow/demande/StatistiquesControllerTest.java"
+  ],
+  "erreurs": [],
+  "avertissements": [
+    "mesure OpenCode : coût recalculé depuis les tokens de l'export (le champ cost d'OpenCode est ignoré pour comparer à méthode égale)"
+  ]
+}

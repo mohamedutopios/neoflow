@@ -1,0 +1,147 @@
+{
+  "questions": [
+    {
+      "id": "Q-01",
+      "question": "Combien de dépenses une note peut-elle contenir, et quels champs par dépense ?",
+      "source": "Ticket point 1 : « Une note de frais regroupe plusieurs dépenses (repas, hôtel, transport, kilomètres, divers) »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-01",
+        "enonce": "Une note contient de 1 à 30 lignes : date, catégorie, montant TTC en euros, indicateur étranger, nuits (hôtel), kilomètres (kilométrique), commentaire."
+      }
+    },
+    {
+      "id": "Q-02",
+      "question": "« Divers » correspond-il à la catégorie AUTRE du calcul existant (plafond 50 €) ?",
+      "source": "Ticket point 1 ; CalculRemboursementLegacy : branche par défaut, plafond 50",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-02",
+        "enonce": "« Divers » est la catégorie AUTRE, plafonnée à 50 € par le calcul existant."
+      }
+    },
+    {
+      "id": "Q-03",
+      "question": "Si le calcul existant n'est pas exact au centime, faut-il le corriger malgré « ne surtout pas y toucher » ?",
+      "source": "Ticket points 2 et 5 ; CalculRemboursementLegacy : « rembourse = Math.round(rembourse * 100) / 100 » (division entière)",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-03",
+        "enonce": "Le montant remboursable est celui du calcul existant, sans modification ; l'écart éventuel est documenté."
+      }
+    },
+    {
+      "id": "Q-04",
+      "question": "Le justificatif est-il obligatoire pour toutes les dépenses, ou seulement au-delà d'un seuil ?",
+      "source": "Ticket point 3 : « obligatoire pour toutes les dépenses, sans exception » contre Nadia Ferhat : « Pour les petites dépenses […] on ne demande jamais le justificatif »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-04",
+        "enonce": "Justificatif obligatoire au-delà d'un seuil de montant déclaré, sauf kilométrique."
+      }
+    },
+    {
+      "id": "Q-05",
+      "question": "« Plus de trois mois » : trois mois calendaires ou 90 jours ? À compter de la date de dépense, de saisie ou de soumission ?",
+      "source": "Ticket point 4 : « Les dépenses trop anciennes ne sont pas remboursées (plus de trois mois) »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-05",
+        "enonce": "Une dépense est refusée si elle date de plus de 90 jours calendaires à la soumission."
+      }
+    },
+    {
+      "id": "Q-06",
+      "question": "Quel critère identifie « une même dépense » remboursée deux fois, et sur quelles notes ?",
+      "source": "Ticket point 6 : « Une même dépense ne doit pas pouvoir être remboursée deux fois »",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-06",
+        "enonce": "Même date, même catégorie et même montant déclaré sur deux notes non refusées du même demandeur."
+      }
+    },
+    {
+      "id": "Q-07",
+      "question": "Genève et Londres : dépenses en devises ? Conversion, taux, majoration « étranger » ?",
+      "source": "Ticket : « Nos commerciaux vont régulièrement à Genève et à Londres »",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-07",
+        "enonce": "Les montants sont saisis en euros ; l'indicateur étranger est transmis au calcul existant."
+      }
+    },
+    {
+      "id": "Q-08",
+      "question": "« Ergonomique, utilisable sur mobile si possible » : quels critères mesurables ?",
+      "source": "Ticket : « L'écran doit être ergonomique, et utilisable sur mobile si possible »",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-08",
+        "enonce": "À 320 px de large, saisie d'une ligne sans défilement horizontal et en moins de 45 secondes."
+      }
+    },
+    {
+      "id": "Q-09",
+      "question": "Quels formats et quelle taille de justificatif, stockés où, et conservés combien de temps ?",
+      "source": "Ticket point 3 (exigence des commissaires aux comptes) ; pièce jointe non fournie",
+      "priorite": "Bloquante",
+      "hypothese": {
+        "id": "H-09",
+        "enonce": "PDF, JPEG ou PNG, 5 Mo au plus, un fichier par ligne ; stockage et conservation à décider par ADR."
+      }
+    },
+    {
+      "id": "Q-10",
+      "question": "Quel montant transmettre au circuit de validation : total déclaré ou total remboursable ?",
+      "source": "Socle : CircuitValidationService transmet montant au legacy (niveau selon le montant)",
+      "priorite": "Importante",
+      "hypothese": {
+        "id": "H-10",
+        "enonce": "Le montant transmis au circuit est le total remboursable de la note."
+      }
+    }
+  ],
+  "contradictions": [
+    {
+      "passages": [
+        "Point 3 : « Le justificatif est obligatoire pour toutes les dépenses, sans exception »",
+        "Nadia Ferhat : « on ne demande jamais le justificatif »"
+      ],
+      "explication": "Exigence absolue contre pratique de la comptabilité (Q-04)."
+    },
+    {
+      "passages": [
+        "Point 2 : « ne surtout pas y toucher »",
+        "Point 5 : « exact au centime près »"
+      ],
+      "explication": "Le calcul existant arrondit par division entière : il ne peut pas être exact au centime sans modification (Q-03)."
+    }
+  ],
+  "risques": [
+    {
+      "id": "R-01",
+      "risque": "Arrondi à l'euro inférieur du calcul existant (25,50 € → 25,00 €)",
+      "mitigation": "Tests de caractérisation avant toute assertion ; ADR"
+    },
+    {
+      "id": "R-02",
+      "risque": "Barème 2023 non mis à jour (TODO dans le code)",
+      "mitigation": "Question au contrôle de gestion"
+    },
+    {
+      "id": "R-03",
+      "risque": "Justificatifs contenant des données personnelles",
+      "mitigation": "Accès restreint, conservation décidée avec le DPO"
+    }
+  ],
+  "termes_a_chiffrer": [
+    {
+      "terme": "ergonomique",
+      "question": "Quels critères d'utilisabilité, sur quel appareil ?"
+    },
+    {
+      "terme": "si possible",
+      "question": "Le mobile est-il exigé ou optionnel en v1 ?"
+    }
+  ]
+}

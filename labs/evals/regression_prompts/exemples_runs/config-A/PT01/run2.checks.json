@@ -1,0 +1,26 @@
+{
+  "racine": "/tmp/neoflow",
+  "fichiers_git": [],
+  "code_retour": 0,
+  "controles": {
+    "C3": {
+      "cmd": "find {dossier}/acceptes -name '*.java' | grep -q .",
+      "code": 1,
+      "extrait": ""
+    },
+    "C4": {
+      "cmd": "git status --porcelain -- backend/src | grep -q . && exit 1 || exit 0",
+      "code": 0,
+      "extrait": ""
+    }
+  },
+  "commande": [
+    "labs/tests-ia/tests-ia",
+    "generer",
+    "--projet",
+    "backend",
+    "--classe",
+    "com.neosoft.neoflow.validation.CircuitValidationService",
+    "…"
+  ]
+}

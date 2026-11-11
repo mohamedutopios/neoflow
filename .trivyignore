@@ -1,0 +1,12 @@
+# Exceptions de vulnérabilités acceptées — NeoFlow
+# Règle : chaque exception a une justification, un responsable et une date d'expiration.
+# Revue obligatoire à expiration (Trivy ignore la ligne après la date indiquée).
+
+# Spring Framework 6.2.x — RCE/SSRF via XsltView. Non applicable : NeoFlow n'utilise aucune XsltView
+# (API REST JSON uniquement). Correctif disponible seulement en Spring Framework 7 (Spring Boot 4).
+# Responsable : tech lead NeoFlow. Action : migration Spring Boot 4 planifiée.
+CVE-2026-47884 exp:2027-03-31
+
+# Spring Framework 6.2.x — corruption de flux SSE avec fragments de vue. Non applicable : aucun endpoint SSE.
+# Responsable : tech lead NeoFlow. Action : migration Spring Boot 4 planifiée.
+CVE-2026-47890 exp:2027-03-31

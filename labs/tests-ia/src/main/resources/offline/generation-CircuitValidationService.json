@@ -1,0 +1,76 @@
+{
+  "generation-tests": [
+    {
+      "tests": [
+        {
+          "nomClasse": "CircuitValidationServiceSansMontantIaTest",
+          "exigence": "CV-01, CV-02 : demande GENERIQUE sans montant",
+          "oracle": "CV-02 : « obtient le niveau 1 »",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceSansMontantIaTest {\n\n    @Test\n    void demandeGeneriqueSansMontant_obtientLeNiveau1() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.GENERIQUE);\n        d.setMontant(null);\n        d.setUrgent(false);\n        d.setDepartement(\"RH\");\n\n        assertThat(circuit.calculerNiveau(d, 24)).isEqualTo(1);\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceCoherenceIaTest",
+          "exigence": "CV-02 : cohérence avec le legacy",
+          "oracle": "valeur calculée par RegleValidationLegacy",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceCoherenceIaTest {\n\n    @Test\n    void niveauCoherentAvecLeLegacy() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.GENERIQUE);\n        d.setMontant(null);\n        d.setUrgent(false);\n        d.setDepartement(\"RH\");\n        int attendu = RegleValidationLegacy.determinerNiveau(\"GENERIQUE\", 0.0, 24, \"RH\", false);\n\n        assertThat(circuit.calculerNiveau(d, 24)).isEqualTo(attendu);\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceUrgenteIaTest",
+          "exigence": "CV-04 : urgente hors DSI",
+          "oracle": "CV-04 : « niveau 2 »",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceUrgenteIaTest {\n\n    @Test\n    void demandeUrgenteRh_obtientLeNiveau2() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.GENERIQUE);\n        d.setUrgence(true);\n        d.setDepartement(\"RH\");\n\n        assertThat(circuit.calculerNiveau(d, 24)).isEqualTo(2);\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceRobusteIaTest",
+          "exigence": "CV-01 : pas d'exception sans montant",
+          "oracle": "aucune exception",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceRobusteIaTest {\n\n    @Test\n    void calculerNiveau_neLevePas() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.GENERIQUE);\n        d.setMontant(null);\n        d.setUrgent(false);\n        d.setDepartement(\"RH\");\n        try {\n            circuit.calculerNiveau(d, 24);\n        } catch (Exception e) {\n        }\n        assertThat(true).isTrue();\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceCongesNouveauIaTest",
+          "exigence": "CV-03 : CONGES, moins de 3 mois d'ancienneté",
+          "oracle": "CV-03 (lecture erronée) : niveau 1",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceCongesNouveauIaTest {\n\n    @Test\n    void congesNouvelArrivant_obtientLeNiveau1() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.CONGES);\n        d.setMontant(null);\n        d.setUrgent(false);\n        d.setDepartement(\"RH\");\n\n        assertThat(circuit.calculerNiveau(d, 2)).isEqualTo(1);\n    }\n}\n"
+        }
+      ],
+      "questions": [
+        "Règle « vendredi après 14 h » du legacy : hors spécification (horloge système), aucun test proposé. Faut-il la caractériser au J8 ?"
+      ]
+    },
+    {
+      "tests": [
+        {
+          "nomClasse": "CircuitValidationServiceUrgenteRhIaTest",
+          "exigence": "CV-04 : urgente hors DSI",
+          "oracle": "CV-04 : « département RH → niveau 2 »",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceUrgenteRhIaTest {\n\n    @Test\n    void demandeUrgenteRhSansMontant_obtientLeNiveau2() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.GENERIQUE);\n        d.setMontant(null);\n        d.setUrgent(true);\n        d.setDepartement(\"RH\");\n\n        assertThat(circuit.calculerNiveau(d, 24)).isEqualTo(2);\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceCongesIaTest",
+          "exigence": "CV-03 : CONGES, 24 mois d'ancienneté",
+          "oracle": "CV-03 : « niveau 1 »",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceCongesIaTest {\n\n    @Test\n    void congesAncien_obtientLeNiveau1() {\n        CircuitValidationService circuit = new CircuitValidationService(mock(CollaborateurRepository.class), Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n        Demande d = new Demande();\n        d.setType(TypeDemande.CONGES);\n        d.setMontant(null);\n        d.setUrgent(false);\n        d.setDepartement(\"RH\");\n\n        assertThat(circuit.calculerNiveau(d, 24)).isEqualTo(1);\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceAncienneteIaTest",
+          "exigence": "CV-06 : mois révolus",
+          "oracle": "CV-06 : « 24 »",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceAncienneteIaTest {\n\n    @Test\n    void ancienneteMois_compteLesMoisRevolus() {\n        CollaborateurRepository collaborateurs = mock(CollaborateurRepository.class);\n        when(collaborateurs.findById(\"alice\")).thenReturn(Optional.of(new Collaborateur(\"alice\", \"Alice Martin\", \"RH\", LocalDate.of(2024, 11, 4))));\n        CircuitValidationService circuit = new CircuitValidationService(collaborateurs, Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n\n        assertThat(circuit.ancienneteMois(\"alice\")).isEqualTo(24);\n    }\n}\n"
+        },
+        {
+          "nomClasse": "CircuitValidationServiceAncienneteAbsentIaTest",
+          "exigence": "CV-06 : collaborateur absent",
+          "oracle": "CV-06 : « 0 »",
+          "source": "package com.neosoft.neoflow.validation;\n\nimport static org.assertj.core.api.Assertions.assertThat;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\nimport java.time.Clock;\nimport java.time.Instant;\nimport java.time.LocalDate;\nimport java.time.ZoneId;\nimport java.util.Optional;\n\nimport org.junit.jupiter.api.Test;\n\nimport com.neosoft.neoflow.collaborateur.Collaborateur;\nimport com.neosoft.neoflow.collaborateur.CollaborateurRepository;\nimport com.neosoft.neoflow.demande.Demande;\nimport com.neosoft.neoflow.demande.TypeDemande;\nimport com.neosoft.neoflow.legacy.RegleValidationLegacy;\n\nclass CircuitValidationServiceAncienneteAbsentIaTest {\n\n    @Test\n    void ancienneteMois_collaborateurAbsent_vautZero() {\n        CollaborateurRepository collaborateurs = mock(CollaborateurRepository.class);\n        when(collaborateurs.findById(\"alice\")).thenReturn(Optional.empty());\n        CircuitValidationService circuit = new CircuitValidationService(collaborateurs, Clock.fixed(Instant.parse(\"2026-11-04T09:00:00Z\"), ZoneId.of(\"Europe/Paris\")));\n\n        assertThat(circuit.ancienneteMois(\"alice\")).isEqualTo(0);\n    }\n}\n"
+        }
+      ],
+      "questions": []
+    },
+    {
+      "tests": [],
+      "questions": [
+        "Mutants restants sans exigence correspondante : décision humaine requise avant d'écrire un test."
+      ]
+    }
+  ]
+}

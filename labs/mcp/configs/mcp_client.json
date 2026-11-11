@@ -1,0 +1,51 @@
+{
+  "_doc": "Serveurs MCP exposés à neoagent par client/pont.py. Seuls les outils listés sont exposés ; le risque est décidé ici, pas par le serveur. Écriture et exécution : confirmation humaine obligatoire. ${VAR} est lu dans l'environnement de l'hôte ; env_hote liste les SEULES variables de l'hôte transmises au serveur.",
+  "racine": "../../..",
+  "journal": "labs/mcp/var/client.jsonl",
+  "serveurs": {
+    "git": {
+      "commande": ["uv", "run", "--no-sync", "--project", "labs/mcp", "mcp-server-git", "--repository", "."],
+      "env_hote": ["PATH", "HOME", "UV_PROJECT_ENVIRONMENT"],
+      "outils": {
+        "git_status": "lecture",
+        "git_log": "lecture",
+        "git_diff": "lecture",
+        "git_diff_unstaged": "lecture",
+        "git_branch": "lecture",
+        "git_show": {"risque": "lecture", "confirmation": true}
+      }
+    },
+    "rag": {
+      "commande": ["uv", "run", "--no-sync", "--project", "labs/mcp", "python", "labs/mcp/retriever_server.py"],
+      "env_hote": ["PATH", "HOME", "UV_PROJECT_ENVIRONMENT"],
+      "env": {"NEOFLOW_MCP_ACTOR": "svc-neoagent-${USER}", "NEOFLOW_MCP_AUDIT": "labs/mcp/var/audit.jsonl"},
+      "outils": {"search_code": "lecture", "search_docs": "lecture", "get_chunk": "lecture"}
+    },
+    "tickets": {
+      "commande": ["uv", "run", "--no-sync", "--project", "labs/mcp", "python", "labs/mcp/tickets_server.py"],
+      "env_hote": ["PATH", "HOME", "UV_PROJECT_ENVIRONMENT"],
+      "env": {"NEOFLOW_MCP_ACTOR": "svc-neoagent-${USER}", "NEOFLOW_MCP_AUDIT": "labs/mcp/var/audit.jsonl",
+              "NEOFLOW_TICKETS_WRITE": "on"},
+      "outils": {
+        "list_tickets": "lecture",
+        "get_ticket": "lecture",
+        "comment_ticket": {"risque": "ecriture", "parametre_confirmation": "confirm"}
+      }
+    },
+    "db": {
+      "commande": ["uv", "run", "--no-sync", "--project", "labs/mcp", "python", "labs/mcp/readonly_sql_server.py"],
+      "env_hote": ["PATH", "HOME", "UV_PROJECT_ENVIRONMENT", "NEOFLOW_DB_URL"],
+      "env": {"NEOFLOW_MCP_ACTOR": "svc-neoagent-${USER}", "NEOFLOW_MCP_AUDIT": "labs/mcp/var/audit.jsonl",
+              "NEOFLOW_DB_MAX_ROWS": "100"},
+      "outils": {"list_tables": "lecture", "describe_table": "lecture",
+                 "demandes_par_statut": "lecture", "run_select": "lecture"}
+    },
+    "tickets-java": {
+      "actif": false,
+      "commande": ["java", "-jar", "labs/mcp/java/tickets-server/target/neoflow-mcp-tickets.jar"],
+      "env_hote": ["PATH", "HOME", "JAVA_HOME"],
+      "env": {"NEOFLOW_TICKETS_DATA": "labs/mcp/data/tickets.json"},
+      "outils": {"list_tickets": "lecture", "get_ticket": "lecture"}
+    }
+  }
+}

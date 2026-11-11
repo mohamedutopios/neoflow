@@ -1,0 +1,21 @@
+[1/5] 12 question(s) extraites du ticket
+[2/5] décisions humaines appliquées (labs/spec/exemples/reponses_CONGES.yaml)
+[3/5] génération puis [4/5] validation et correction bornée
+  tour 0 : 0 erreur(s), 0 avertissement(s)
+Validation de CONGES
+
+  ✔ Spécification docs/specs/CONGES.md : statut EN REVUE, 16 EF, 8 ENF, 15 hypothèse(s)
+  ✔ 6 fichier(s) .feature, 57 scénario(s) ou plan(s)
+  ✔ ENF-01 prouvée hors Gherkin : Mesure `http.server.requests` p95 (J10) ; revue des requêtes
+  ✔ ENF-05 prouvée hors Gherkin : Test Vitest (3 champs à renseigner, titre prérempli) ; test utilisateur chronométré (J10)
+  ✔ ENF-06 prouvée hors Gherkin : `RegleCongesTest` (compteur `SimpleMeterRegistry`) ; test de capture de logs
+  ✔ ENF-07 prouvée hors Gherkin : Tests avec `Clock.fixed` ; test à 23 h 30 UTC ; revue : aucun `LocalDate.now()` sans horloge
+  ✔ ENF-08 prouvée hors Gherkin : Tests du socle verts ; diff vide sur `legacy/`, `RegleGenerique`, `StatutDemande`
+  ✔ docs/specs/conges/openapi/conges-delta.yaml : contrat OpenAPI valide, 7 opération(s), 19 exigence(s) citée(s)
+  ✔ ADR liés : ADR-001-debit-solde-conges.md
+
+0 erreur(s), 0 avertissement(s).
+Porte déterministe franchie : la relecture humaine peut commencer.
+Spécification écrite au statut EN REVUE après 0 correction(s). Prochaine étape : relecture (porte 3).
+[5/5] squelettes de steps Cucumber-JVM
+64 définition(s) d'étapes → /tmp/rr-PS01/wt/backend/src/test/java/com/neosoft/neoflow/acceptance/conges/CongesSteps.java

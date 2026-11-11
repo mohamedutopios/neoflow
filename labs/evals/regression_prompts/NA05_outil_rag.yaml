@@ -1,0 +1,23 @@
+# Outil RAG du J5 branché par --outils-externes : pour une question de compréhension, l'agent
+# l'utilise et cite les bons fichiers. Question Q01 du jeu de référence (labs/evals/rag_questions.yaml).
+# Cas sensible à la DESCRIPTION de l'outil : c'est elle qui décide de son choix par le modèle.
+id: NA05
+titre: neoagent + outil RAG — question du J5 répondue avec sources
+outil: neoagent
+cible: labs/rag/agent_tool.py (description de l'outil)
+pattern: react
+mode: structure
+outils_externes: ["rag.agent_tool:rag_tool"]     # à adapter à l'import de votre neoagent
+repetitions: 3
+seuil: "2/3"
+tache: |
+  Question sur le dépôt NeoFlow : où et comment est calculé le niveau de validation d'une demande au moment
+  de la soumission ? Quelles données d'entrée sont utilisées ? Répondez en 8 lignes maximum, en citant chaque
+  source sous la forme chemin:lignes. Ne modifiez aucun fichier.
+criteres:
+  - { id: C1, type: outil_appele, outil: 'rag\w*|rechercher\w*' }
+  - { id: C2, type: cite_fichiers, fichiers: [backend/src/main/java/com/neosoft/neoflow/validation/CircuitValidationService.java,
+                                               backend/src/main/java/com/neosoft/neoflow/legacy/RegleValidationLegacy.java] }
+  - { id: C3, type: sortie_contient, motifs: ['anciennet[ée]|ancienneteMois', 'montant', 'd[ée]partement|urgent'] }
+  - { id: C4, type: aucune_ecriture }
+budget: { max_appels_outils: 15 }

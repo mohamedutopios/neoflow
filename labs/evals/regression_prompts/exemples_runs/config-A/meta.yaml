@@ -1,0 +1,8 @@
+label: config-A
+description: 'Outils 1.3 (référence) : prompt système de neoagent complet (~4 300
+  tokens avec les schémas d''outils), description de l''outil RAG détaillée (quoi
+  + quand), assistant de spec v2.'
+empreinte: 3f9a1c27be04
+date: '2026-11-02'
+mode: reel
+note: journaux d'exemple fictifs, conformes au contrat neoagent

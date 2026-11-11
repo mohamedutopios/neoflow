@@ -1,0 +1,23 @@
+# Régression des prompts de l'assistant de spécification (J3, `neospec`) : la chaîne complète
+# questions → arbitrage (réponses figées) → génération → validation et correction bornée → steps
+# reste valide sur le ticket CONGES (NF-401, docs/tickets/CONGES.md).
+# Hors ligne (défaut) : modèle simulé de labs/spec (fixtures/offline/CONGES), aucun appel API.
+# --reel : vos prompts face au vrai modèle. La chaîne ÉCRIT dans le dépôt (docs/specs, docs/adr,
+# backend/src/test/java/…/acceptance) : worktree obligatoire. Adaptez SPEC_CMD si votre lanceur diffère.
+id: PS01
+titre: neospec chaine — spécification CONGES produite, validée et tracée
+outil: commande
+cible: labs/spec (prompts questions, génération, correction)
+worktree: true
+commande: "${SPEC_CMD:-uv run --project labs/spec neospec} chaine --type CONGES --reponses labs/spec/exemples/reponses_CONGES.yaml --racine {repo} --journal {journal} --max-corrections 2 {offline}"
+repetitions: 3
+seuil: "2/3"
+criteres:
+  - { id: C1, type: code_retour, attendu: 0 }                 # 1 validation KO, 2 correction épuisée, 3 erreur modèle
+  - { id: C2, type: sortie_contient, motifs: ['\[5/5\]', 'EN REVUE'] }
+  - { id: C3, type: fichiers_modifies,
+      inclus: ["docs/specs/CONGES.md", "docs/specs/conges/features/*.feature", "docs/specs/conges/neospec/decisions.json",
+               "docs/specs/conges/MATRICE_TRACABILITE.md"],
+      exclus: ["backend/src/main/**", "**/legacy/**", ".github/**", "labs/**"] }
+  - { id: C4, type: commande, cmd: "uv run --project labs/spec neospec valider --type CONGES --racine .", code_attendu: 0 }
+  - { id: C5, type: commande, cmd: "grep -qE 'EF-0[1-5]' docs/specs/CONGES.md && grep -q 'EN REVUE' docs/specs/CONGES.md", code_attendu: 0 }

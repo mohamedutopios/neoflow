@@ -1,0 +1,22 @@
+# Tâche rejouée du J10 pour la mesure avant/après (mesure/TACHES_AVANT_APRES.md), en mode structuré.
+id: NA06
+titre: neoagent --mode structure — GET /api/demandes/statistiques/types avec tests
+outil: neoagent
+cible: neoagent complet (prompt, outils, bornes, Generator–Verifier)
+pattern: generator_verifier
+mode: structure
+worktree: true
+repetitions: 3
+seuil: "2/3"
+tache: |
+  Ajoutez l'endpoint GET /api/demandes/statistiques/types qui renvoie le nombre de demandes par type, avec ses
+  tests. Spécification : docs/specs/STAT-TYPES.md (critères A1 à A6). Contraintes : comptage en base (GROUP BY),
+  les 11 types toujours présents, 401 sans authentification, aucune nouvelle dépendance, ni legacy ni migrations.
+criteres:
+  - { id: C1, type: fichiers_modifies, inclus: ["backend/src/main/java/**", "backend/src/test/java/**"],
+      exclus: ["**/legacy/**", "**/db/migration/V1__*", "**/db/migration/V2__*", ".github/**", "backend/pom.xml"], max: 8 }
+  - { id: C2, type: tests_apres_ecriture }
+  - { id: C3, type: approbation_avant_ecriture }
+  - { id: C4, type: commande, cmd: "grep -rq 'statistiques/types' backend/src/main/java", code_attendu: 0 }
+  - { id: C5, type: commande, cmd: "cd backend && ./mvnw -q verify", code_attendu: 0 }
+budget: { max_appels_outils: 60, max_tokens: 900000, max_etapes: 40, max_duree_s: 1200 }

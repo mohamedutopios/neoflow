@@ -1,0 +1,11 @@
+# Profil test : H2 en mémoire, schéma et données de démonstration chargés par Flyway.
+spring:
+  datasource:
+    url: jdbc:h2:mem:neoflow-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+
+logging:
+  structured:
+    format:
+      console: ""

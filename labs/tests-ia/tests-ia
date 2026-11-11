@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Lance le lab J07 (générateur de tests vérifié, assistant de diagnostic). Voir README.md.
+set -euo pipefail
+ICI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -d "$ICI/target/lib" ] || [ ! -d "$ICI/target/classes" ]; then
+  (cd "$ICI" && ./mvnw -q -B -DskipTests package)
+fi
+exec java -cp "$ICI/target/classes:$ICI/target/lib/*" com.neosoft.neoflow.testsia.Application "$@"
