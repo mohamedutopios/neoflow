@@ -40,7 +40,7 @@ jobs:
           java-version: "21"
           cache: maven
       - name: Build, tests unitaires et d'intégration (JaCoCo configuré dans le pom)
-        run: ./mvnw -B -ntp verify
+        run: sh ./mvnw -B -ntp verify
       - name: Seuil de couverture (lignes, tests d'intégration)
         env:
           # Cliquet : mesurer la valeur de référence, fixer le seuil juste en dessous, ne jamais le baisser.
@@ -141,7 +141,7 @@ jobs:
           cache: maven
       - name: Dépendances Maven en cache local (pour Trivy)
         working-directory: backend
-        run: ./mvnw -B -ntp -q dependency:go-offline
+        run: sh ./mvnw -B -ntp -q dependency:go-offline
 
       - name: Installer Trivy
         run: |
