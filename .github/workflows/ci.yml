@@ -131,9 +131,9 @@ jobs:
           jq -r '.[] | "- `\(.RuleID)` \(.File):\(.StartLine) (commit \(.Commit[0:8]))"' gitleaks.json >> "$GITHUB_STEP_SUMMARY"
           echo "fuites=${FUITES}" >> "$GITHUB_OUTPUT"
 
-      # Trivy lit backend/pom.xml et cherche les POM des dépendances dans ~/.m2, sinon sur Maven Central.
-      # Central limite les requêtes (429 Too Many Requests) et Trivy s'arrête alors en FATAL :
-      # on remplit donc le cache Maven avant le scan, comme Trivy le recommande.
+      # Trivy lit backend/pom.xml. Avec --offline-scan, il ne va jamais sur Maven Central (qui répond
+      # 429 Too Many Requests aux runners) : il résout les dépendances transitives avec le cache Maven,
+      # rempli ici.
       - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
@@ -153,7 +153,7 @@ jobs:
         id: trivy
         run: |
           # Exceptions justifiées et datées (exp:AAAA-MM-JJ) dans .trivyignore, lu automatiquement, relu en PR.
-          trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL \
+          trivy fs --offline-scan --scanners vuln,secret,misconfig --severity HIGH,CRITICAL \
             --format json --output trivy.json .
           CRITIQUES=$(jq '[.Results[]? | .Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy.json)
           {
@@ -164,8 +164,8 @@ jobs:
 
       - name: SBOM CycloneDX et licences
         run: |
-          trivy fs --format cyclonedx --output sbom.cdx.json .
-          trivy fs --scanners license --severity UNKNOWN,HIGH,CRITICAL --format table --output licences.txt .
+          trivy fs --offline-scan --format cyclonedx --output sbom.cdx.json .
+          trivy fs --offline-scan --scanners license --severity UNKNOWN,HIGH,CRITICAL --format table --output licences.txt .
 
       - uses: actions/upload-artifact@v7.0.2
         if: always()
