@@ -182,8 +182,6 @@ jobs:
   revue-ia:
     name: Revue IA (reviewer, lecture seule, consultative)
     needs: [securite]
-    # Pas de revue sur les PR de forks : le secret n'y est pas disponible, et c'est voulu.
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -206,21 +204,19 @@ jobs:
       - name: Revue par l'agent reviewer
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          # Défense en profondeur : remplace (chaînes) les permissions d'édition, de réseau et de Code Mode.
+          # PR : le commit de base de la PR. Push : le commit d'avant le push.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           OPENCODE_CONFIG_CONTENT: '{"permission":{"edit":"deny","execute":"deny","webfetch":"deny","websearch":"deny","external_directory":"deny"},"share":"disabled","autoupdate":false}'
         run: |
-          # Le checkout (fetch-depth: 0) a déjà rapatrié toutes les branches : branche locale sans accès réseau
-          # (un « git fetch » échouerait sur un dépôt privé, les identifiants n'étant pas conservés).
-          git branch --force "${BASE_REF}" "origin/${BASE_REF}"
-          # --standalone : serveur privé qui lit CET environnement (pas de service d'arrière-plan en CI).
-          # Agent introuvable : OpenCode 2.x échoue (« Agent not found ») ; le job échoue avec lui.
           if ! opencode run --standalone --agent reviewer \
-            "Relis le diff ${BASE_REF}...HEAD selon la skill revue-pr. Rapports des scans CI à confronter : .rapports/semgrep.json, .rapports/gitleaks.json, .rapports/trivy.json. Rapport Markdown uniquement." \
+            "Relis le diff ${BASE}...HEAD selon la skill revue-pr. Rapports des scans CI à confronter : .rapports/semgrep.json, .rapports/gitleaks.json, .rapports/trivy.json. Rapport Markdown uniquement." \
             < /dev/null > review.md 2> opencode.log; then
             echo "::error::la revue IA a échoué : voir opencode.log"; cat opencode.log; exit 1
           fi
+      - name: Rapport dans le résumé du run
+        run: cat review.md >> "$GITHUB_STEP_SUMMARY"
       - name: Publier le rapport en commentaire de PR
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
