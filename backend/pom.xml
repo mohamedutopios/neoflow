@@ -21,7 +21,7 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>2.8.17</springdoc.version>
-        <commons-text.version>1.9</commons-text.version>
+        <commons-text.version>1.15.0</commons-text.version>
         <jacoco.version>0.8.14</jacoco.version>
         <!-- Correctifs de sécurité au-dessus du BOM Spring Boot 3.5 (voir backend/.trivyignore pour les exceptions restantes) -->
         <tomcat.version>10.1.61</tomcat.version>

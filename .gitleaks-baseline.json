@@ -1,0 +1,27 @@
+[
+ {
+  "RuleID": "neoflow-propriete-spring-secret",
+  "Description": "Secret en clair dans une propriété Spring (api-key, token, secret, password)",
+  "StartLine": 35,
+  "EndLine": 35,
+  "StartColumn": 6,
+  "EndColumn": 54,
+  "Match": "api-key: REDACTED",
+  "Secret": "REDACTED",
+  "File": "backend/src/main/resources/application.yml",
+  "SymlinkFile": "",
+  "Commit": "4ec97ecd27e1f685e44661ec9a2683c8ca1d2330",
+  "Link": "https://github.com/mohamedutopios/neoflow/blob/4ec97ecd27e1f685e44661ec9a2683c8ca1d2330/backend/src/main/resources/application.yml#L35",
+  "Entropy": 5.171928,
+  "Author": "Your Name",
+  "Email": "you@example.com",
+  "Date": "2026-11-11T18:53:08Z",
+  "Message": ":tada: first commit",
+  "Tags": [
+   "neoflow",
+   "spring",
+   "F4"
+  ],
+  "Fingerprint": "4ec97ecd27e1f685e44661ec9a2683c8ca1d2330:backend/src/main/resources/application.yml:neoflow-propriete-spring-secret:35"
+ }
+]

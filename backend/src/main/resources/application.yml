@@ -32,21 +32,20 @@ neoflow:
   notification:
     actif: false
     url: https://notifications.neoflow-velmora.example/api/v1/messages
-    api-key: nfk_7Qm2xV9pL4tR8sW1zB6nK3yH5jD0cF2aG8eU
+    # Secret injecté à l'exécution (variable d'environnement ou coffre), jamais versionné.
+    api-key: ${NEOFLOW_NOTIFICATION_API_KEY:}
     expediteur: neoflow-noreply@velmora.example
 
 management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        # health et info publics (sondes) ; metrics réservé à ADMIN (SecurityConfig). Rien d'autre.
+        include: health,info,metrics
   endpoint:
     health:
-      show-details: always
-    env:
-      show-values: always
-    configprops:
-      show-values: always
+      show-details: when-authorized
+      roles: ADMIN
   tracing:
     sampling:
       probability: 1.0

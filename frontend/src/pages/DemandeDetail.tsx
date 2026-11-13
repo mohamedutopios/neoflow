@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -15,9 +16,15 @@ interface DescriptionRicheProps {
   html: string;
 }
 
-/** Les descriptions reprises de l'ancien intranet contiennent de la mise en forme HTML. */
+/**
+ * Les descriptions reprises de l'ancien intranet contiennent de la mise en forme HTML.
+ * F2 corrigée : le HTML est assaini (liste blanche de balises de mise en forme, aucun attribut)
+ * avant insertion ; scripts, gestionnaires d'événements et liens javascript: sont supprimés.
+ */
+const MISE_EN_FORME = { ALLOWED_TAGS: ['p', 'br', 'ul', 'ol', 'li', 'b', 'strong', 'i', 'em'], ALLOWED_ATTR: [] };
+
 function DescriptionRiche({ html }: DescriptionRicheProps) {
-  return <div className="description" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div className="description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html, MISE_EN_FORME) }} />;
 }
 
 export function DemandeDetail() {

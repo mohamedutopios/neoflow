@@ -250,13 +250,13 @@ Sans identifiants valides : **401**. Les règles d'accès par rôle sont déclar
 - HTTP Basic, sans session (`STATELESS`), CSRF désactivé (identifiants envoyés à chaque requête dans l'en-tête `Authorization`, pas de cookie).
 - Comptes de démonstration déclarés dans `application.yml` (`neoflow.securite.utilisateurs`), mot de passe `neoflow` : `alice` (DEMANDEUR), `bob` (VALIDEUR), `admin` (ADMIN). Pas de hiérarchie de rôles : `admin` ne valide pas, `bob` ne crée pas.
 - Le frontend envoie `X-Requested-With: XMLHttpRequest` : Spring Security répond alors 401 sans en-tête `WWW-Authenticate`, ce qui évite la fenêtre d'authentification native du navigateur.
-- Accessibles sans authentification : `/actuator/**`, `/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`, `/error`. Toute autre route hors `/api/**` est refusée.
+- Accessibles sans authentification : `/actuator/health`, `/actuator/info`, `/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`, `/error`. Toute autre route hors `/api/**` est refusée.
 
 ## 9. Observabilité
 
 - **Logs** : format structuré ECS sur la console (`logging.structured.format.console: ecs`) dans les profils `dev` et `dev-h2` ; chaque ligne émise pendant une requête porte `traceId` et `spanId`. Une exception non prévue est journalisée par `GlobalExceptionHandler` (niveau ERROR, champs `error.type`, `error.message`, `error.stack_trace`), et la réponse 500 renvoie le même `traceId`. Le profil `test` garde le format texte lisible.
 - **Traces** : Micrometer Tracing (bridge OpenTelemetry), échantillonnage 100 % (`management.tracing.sampling.probability: 1.0`). Export OTLP HTTP vers `management.otlp.tracing.endpoint`, défini dans le profil `dev` (`OTLP_TRACING_ENDPOINT`, par défaut `http://localhost:4318/v1/traces`). Le profil `dev-h2` n'exporte pas. Les traces se consultent dans Jaeger : http://localhost:16686, service `neoflow-backend`.
-- **Actuator** : `/actuator/health`, `/actuator/metrics`, etc. (voir `management.*` dans `application.yml`).
+- **Actuator** : `/actuator/health` et `/actuator/info` publics ; `/actuator/metrics` réservé au rôle ADMIN (voir `management.*` dans `application.yml`).
 
 ## 10. Profils et configuration
 

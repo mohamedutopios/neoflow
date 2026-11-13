@@ -34,10 +34,17 @@ public class DemandeRechercheController {
     @Operation(summary = "Recherche des demandes dont le titre contient le texte saisi")
     @SuppressWarnings("unchecked")
     public List<DemandeResponse> rechercher(@RequestParam String q) {
+        // La saisie est liée comme paramètre : elle ne fait jamais partie du texte SQL (CWE-89).
+        // Les jokers LIKE saisis (% et _) sont échappés pour être cherchés comme du texte.
         List<Demande> demandes = entityManager
-                .createNativeQuery("SELECT * FROM demande WHERE titre LIKE '%" + q + "%'", Demande.class)
+                .createNativeQuery("SELECT * FROM demande WHERE titre LIKE :motif ESCAPE '!'", Demande.class)
+                .setParameter("motif", "%" + echapperJokers(q) + "%")
                 .setMaxResults(MAX_RESULTATS)
                 .getResultList();
         return demandes.stream().map(mapper::versResponse).toList();
+    }
+
+    static String echapperJokers(String saisie) {
+        return saisie.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 }

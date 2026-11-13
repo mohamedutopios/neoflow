@@ -51,4 +51,24 @@ describe('DemandeDetail', () => {
     expect(screen.queryByRole('button', { name: 'Soumettre' })).not.toBeInTheDocument();
     expect(screen.getByText(/CREATION/)).toBeInTheDocument();
   });
+
+  it('assainit la description HTML : mise en forme conservée, script et gestionnaires supprimés (F2)', async () => {
+    vi.spyOn(api, 'obtenirDemande').mockResolvedValue({
+      ...demande('BROUILLON'),
+      description:
+        '<p>Badge pour le <b>5 octobre</b></p><img src="x" onerror="alert(1)"><script>alert(2)</script>' +
+        '<a href="javascript:alert(3)">lien</a>',
+    });
+    vi.spyOn(api, 'evenements').mockResolvedValue([]);
+    const { container } = rendreAvecUtilisateur(<DemandeDetail />, ALICE, {
+      route: '/demandes/7',
+      chemin: '/demandes/:id',
+    });
+
+    expect(await screen.findByText('5 octobre')).toBeInTheDocument();
+    const description = container.querySelector('.description');
+    expect(description?.querySelector('b')).not.toBeNull();
+    expect(description?.querySelector('img, script, a, [onerror]')).toBeNull();
+    expect(description?.innerHTML).not.toContain('javascript:');
+  });
 });
