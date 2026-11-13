@@ -1,0 +1,10 @@
+# Périmètre du scan Semgrep BLOQUANT : code livré (backend, frontend), CI et configuration.
+# Les laboratoires de formation (labs/) et les tests E2E ont leur propre cycle de revue :
+# ils sont scannés à part, en rapport non bloquant (voir ia-toolbox/matrices/risques.md).
+# Un .semgrepignore remplace les exclusions par défaut : on réimporte donc .gitignore.
+:include .gitignore
+labs/
+e2e/
+.semgrep/
+.quality-gate/
+

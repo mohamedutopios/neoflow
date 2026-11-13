@@ -1,0 +1,94 @@
+# Règles Semgrep maison NeoFlow (J02). Complètent les règles du registre (p/java, p/react,
+# p/typescript, p/owasp-top-ten) sur les motifs propres au projet.
+# Lancer :   semgrep scan --config .semgrep/neoflow.yml --metrics=off .
+# Tester :   (cd .semgrep && semgrep scan --test .)   (fixtures neoflow.java, neoflow.tsx, neoflow.test.yaml : annotations ruleid / ok)
+# Sévérités : ERROR = bloquant en CI ; WARNING = signalé dans le rapport, non bloquant.
+rules:
+  - id: neoflow-requete-native-concatenee
+    languages: [java]
+    severity: ERROR
+    message: >-
+      Requête JPA/SQL construite par concaténation : injection SQL possible (OWASP A03, CWE-89).
+      Utiliser un paramètre nommé (:q) et setParameter, ou une méthode Spring Data.
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      neoflow-faille: F1
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: $EM.createNativeQuery(<... $A + $B ...>, ...)
+          - pattern: $EM.createQuery(<... $A + $B ...>, ...)
+          - pattern: |
+              String $SQL = <... $A + $B ...>;
+              ...
+              $EM.createNativeQuery($SQL, ...);
+          - pattern: $EM.createNativeQuery(String.format(...), ...)
+          - pattern: $EM.createQuery(String.format(...), ...)
+      - pattern-not: $EM.$M("..." + "...", ...)
+
+  - id: neoflow-dangerously-set-inner-html
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      dangerouslySetInnerHTML avec une valeur non assainie : XSS stockée possible (OWASP A03, CWE-79).
+      Afficher le texte via JSX ({valeur}) ou assainir avec DOMPurify.sanitize().
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      neoflow-faille: F2
+      confidence: HIGH
+    patterns:
+      - pattern: <$EL dangerouslySetInnerHTML={$OBJ} />
+      - pattern-not: |
+          <$EL dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(...)}} />
+      - pattern-not: |
+          <$EL dangerouslySetInnerHTML={{__html: "..."}} />
+
+  - id: neoflow-commons-text-interpolation
+    languages: [java]
+    severity: WARNING
+    message: >-
+      Interpolation commons-text avec lookups dynamiques (script, dns, url) : API concernée par
+      CVE-2022-42889 (Text4Shell). Utiliser String.format ou un StringSubstitutor sur Map, et commons-text >= 1.10.0.
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      neoflow-faille: F3
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: org.apache.commons.text.StringSubstitutor.createInterpolator()
+      - pattern: org.apache.commons.text.lookup.StringLookupFactory.INSTANCE.interpolatorStringLookup(...)
+      - pattern: org.apache.commons.text.lookup.StringLookupFactory.INSTANCE.scriptStringLookup()
+
+  - id: neoflow-actuator-permitall
+    languages: [java]
+    severity: ERROR
+    message: >-
+      Endpoints Actuator ouverts sans authentification (permitAll). /actuator/env, /heapdump ou /loggers
+      exposent secrets et configuration (OWASP A05, CWE-200). N'ouvrir que health/info, le reste sous rôle ADMIN.
+    metadata:
+      cwe: "CWE-200"
+      owasp: "A05:2021 - Security Misconfiguration"
+      neoflow-faille: F5
+      confidence: HIGH
+    patterns:
+      - pattern: $AUTH.requestMatchers($P, ...).permitAll()
+      - metavariable-regex:
+          metavariable: $P
+          regex: ^"/actuator(/\*\*|/\*|)"$
+      - focus-metavariable: $P
+
+  - id: neoflow-actuator-exposition-totale
+    languages: [yaml]
+    severity: ERROR
+    message: >-
+      management.endpoints.web.exposure.include = "*" expose tous les endpoints Actuator (OWASP A05).
+      Lister explicitement : health,info (et prometheus si besoin, sur un port de management).
+    metadata:
+      cwe: "CWE-200"
+      neoflow-faille: F5
+      confidence: HIGH
+    pattern: |
+      exposure:
+        include: "*"

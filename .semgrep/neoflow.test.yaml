@@ -1,0 +1,13 @@
+management:
+  endpoints:
+    web:
+      # ruleid: neoflow-actuator-exposition-totale
+      exposure:
+        include: "*"
+---
+management:
+  endpoints:
+    web:
+      # ok: neoflow-actuator-exposition-totale
+      exposure:
+        include: health,info

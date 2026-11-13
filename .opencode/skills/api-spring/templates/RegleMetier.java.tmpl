@@ -1,0 +1,29 @@
+package com.neosoft.neoflow.regles;
+
+// Squelette de règle de variante (skill api-spring). Un bean par TypeDemande.
+// RegleMetierRegistry collecte automatiquement les beans : ne pas modifier le registre.
+// Les messages renvoyés bloquent la création ou la soumission (RegleMetierException, HTTP 422).
+// Les règles GENERIQUE s'appliquent déjà à toutes les demandes : ne pas les dupliquer ici.
+
+import com.neosoft.neoflow.demande.Demande;
+import com.neosoft.neoflow.demande.TypeDemande;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.stereotype.Component;
+
+@Component
+public class Regle<VARIANTE> implements RegleMetierDemande {
+
+    @Override
+    public TypeDemande type() {
+        return TypeDemande.<TYPE>;
+    }
+
+    @Override
+    public List<String> verifier(Demande d) {
+        List<String> erreurs = new ArrayList<>();
+        // Une règle = une condition testable + un message compréhensible par l'utilisateur.
+        // Exemple : if (d.getDateFin() == null) erreurs.add("La date de fin est obligatoire pour <TYPE>.");
+        return erreurs;
+    }
+}

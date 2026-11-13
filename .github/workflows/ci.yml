@@ -1,11 +1,14 @@
-# CI du socle NeoFlow : build et tests uniquement.
-# Les contrôles de sécurité (Semgrep, Gitleaks, Trivy, SBOM) et la revue par agent sont ajoutés en J2.
-name: CI
+# CI NeoFlow — version J02 : qualité, sécurité, revue IA, Quality Gate.
+# Déclencheur pull_request (jamais pull_request_target) : le code d'une PR ne s'exécute jamais
+# avec les secrets du dépôt de base. Le job « quality-gate » est le seul check requis par la
+# protection de branche ; la revue IA est consultative ; un humain fusionne.
+name: CI NeoFlow
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
-  pull_request:
 
 permissions:
   contents: read
@@ -14,51 +17,237 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  SEMGREP_VERSION: "1.183.0"
+  GITLEAKS_VERSION: "8.30.1"
+  TRIVY_VERSION: "0.76.1"
+  OPENCODE_VERSION: "2.2.0"
+
 jobs:
   backend:
-    name: Backend (Java 21, Maven)
+    name: Backend - build, tests, couverture
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Build et tests (unitaires + intégration)
-        run: ./mvnw -B verify
-      - name: Rapports de tests et de couverture
+      - name: Build, tests unitaires et d'intégration (JaCoCo configuré dans le pom)
+        run: ./mvnw -B -ntp verify
+      - name: Seuil de couverture (lignes, tests d'intégration)
+        env:
+          # Cliquet : mesurer la valeur de référence, fixer le seuil juste en dessous, ne jamais le baisser.
+          SEUIL: ${{ vars.SEUIL_COUVERTURE || '75' }}
+        run: |
+          couverture() { awk -F, 'NR>1 {m+=$8; c+=$9} END {printf "%.1f", (m+c) ? 100*c/(m+c) : 0}' "$1"; }
+          UNIT=$(couverture target/site/jacoco/jacoco.csv)
+          IT=$(couverture target/site/jacoco-it/jacoco.csv)
+          echo "Couverture lignes : unitaires ${UNIT} %, intégration ${IT} % (seuil ${SEUIL} % sur l'intégration)" | tee -a "$GITHUB_STEP_SUMMARY"
+          awk -v c="$IT" -v s="$SEUIL" 'BEGIN { exit (c + 0 >= s + 0) ? 0 : 1 }'
+      - uses: actions/upload-artifact@v7.0.2
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: rapports-backend
           path: |
-            backend/target/surefire-reports/
-            backend/target/failsafe-reports/
             backend/target/site/jacoco/
             backend/target/site/jacoco-it/
-          if-no-files-found: ignore
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
 
   frontend:
-    name: Frontend (Node 20, Vite)
+    name: Frontend - lint, types, tests, build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Tests
-        run: npm test
-      - name: Build
-        run: npm run build
+      - run: npm ci --ignore-scripts
+      - name: Signatures et provenance des paquets npm
+        run: npm audit signatures
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  securite:
+    name: Sécurité - Semgrep, Gitleaks, Trivy, SBOM
+    runs-on: ubuntu-latest
+    outputs:
+      semgrep: ${{ steps.semgrep.outputs.bloquants }}
+      gitleaks: ${{ steps.gitleaks.outputs.fuites }}
+      trivy: ${{ steps.trivy.outputs.critiques }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Semgrep (SAST, registre + règles NeoFlow)
+        id: semgrep
+        run: |
+          pipx install "semgrep==${SEMGREP_VERSION}"
+          semgrep scan --metrics=off \
+            --config p/java --config p/react --config p/typescript --config p/owasp-top-ten \
+            --config .semgrep/neoflow.yml \
+            --json-output=semgrep.json --sarif-output=semgrep.sarif || true
+          BLOQUANTS=$(jq '[.results[] | select(.extra.severity | IN("ERROR","CRITICAL","HIGH"))] | length' semgrep.json)
+          {
+            echo "### Semgrep : ${BLOQUANTS} constat(s) bloquant(s)"
+            jq -r '.results[] | "- \(.extra.severity) `\(.check_id | split(".") | last)` \(.path):\(.start.line)"' semgrep.json
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "bloquants=${BLOQUANTS}" >> "$GITHUB_OUTPUT"
+
+      - name: Gitleaks (secrets, commits de la PR)
+        id: gitleaks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          ARCHIVE="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${ARCHIVE}"
+          tar xzf "${ARCHIVE}" gitleaks
+          OPTIONS=(--config .gitleaks.toml --redact --no-banner --report-format json --report-path gitleaks.json)
+          # PR : seulement ses commits. Push sur main : tout l'historique, moins la baseline des secrets révoqués.
+          if [ -n "${BASE_SHA}" ]; then OPTIONS+=("--log-opts=${BASE_SHA}..${HEAD_SHA}"); fi
+          if [ -f .gitleaks-baseline.json ]; then OPTIONS+=(--baseline-path=.gitleaks-baseline.json); fi
+          ./gitleaks git "${OPTIONS[@]}" . || true
+          FUITES=$(jq 'length' gitleaks.json)
+          echo "### Gitleaks : ${FUITES} secret(s)" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.[] | "- `\(.RuleID)` \(.File):\(.StartLine) (commit \(.Commit[0:8]))"' gitleaks.json >> "$GITHUB_STEP_SUMMARY"
+          echo "fuites=${FUITES}" >> "$GITHUB_OUTPUT"
+
+      # Trivy lit backend/pom.xml et cherche les POM des dépendances dans ~/.m2, sinon sur Maven Central.
+      # Central limite les requêtes (429 Too Many Requests) et Trivy s'arrête alors en FATAL :
+      # on remplit donc le cache Maven avant le scan, comme Trivy le recommande.
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Dépendances Maven en cache local (pour Trivy)
+        working-directory: backend
+        run: ./mvnw -B -ntp -q dependency:go-offline
+
+      - name: Installer Trivy
+        run: |
+          PAQUET="trivy_${TRIVY_VERSION}_Linux-64bit.deb"
+          curl -sSfLO "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${PAQUET}"
+          sudo dpkg -i "${PAQUET}"
+
+      - name: Trivy (dépendances vulnérables, secrets, mauvaises configurations)
+        id: trivy
+        run: |
+          # Exceptions justifiées et datées (exp:AAAA-MM-JJ) dans .trivyignore, lu automatiquement, relu en PR.
+          trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL \
+            --format json --output trivy.json .
+          CRITIQUES=$(jq '[.Results[]? | .Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy.json)
+          {
+            echo "### Trivy : ${CRITIQUES} vulnérabilité(s) critique(s)"
+            jq -r '.Results[]? | .Vulnerabilities[]? | "- \(.Severity) \(.VulnerabilityID) \(.PkgName) \(.InstalledVersion) -> \(.FixedVersion // "pas de correctif")"' trivy.json
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "critiques=${CRITIQUES}" >> "$GITHUB_OUTPUT"
+
+      - name: SBOM CycloneDX et licences
+        run: |
+          trivy fs --format cyclonedx --output sbom.cdx.json .
+          trivy fs --scanners license --severity UNKNOWN,HIGH,CRITICAL --format table --output licences.txt .
+
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: rapports-securite
+          path: |
+            semgrep.json
+            semgrep.sarif
+            gitleaks.json
+            trivy.json
+            sbom.cdx.json
+            licences.txt
+
+  revue-ia:
+    name: Revue IA (reviewer, lecture seule, consultative)
+    needs: [securite]
+    # Pas de revue sur les PR de forks : le secret n'y est pas disponible, et c'est voulu.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: rapports-securite
+          path: .rapports
+      - name: Installer OpenCode 2.x (binaire officiel)
+        run: |
+          ARCHIVE="opencode-linux-x64-baseline.tar.gz"
+          curl -sSfL -o "${ARCHIVE}" "https://opencode.ai/files/bin/${OPENCODE_VERSION}/${ARCHIVE}"
+          mkdir -p "${HOME}/.local/bin" && tar -xzf "${ARCHIVE}" -C "${HOME}/.local/bin" opencode
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+      - name: Revue par l'agent reviewer
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          # Défense en profondeur : remplace (chaînes) les permissions d'édition, de réseau et de Code Mode.
+          OPENCODE_CONFIG_CONTENT: '{"permission":{"edit":"deny","execute":"deny","webfetch":"deny","websearch":"deny","external_directory":"deny"},"share":"disabled","autoupdate":false}'
+        run: |
+          # Le checkout (fetch-depth: 0) a déjà rapatrié toutes les branches : branche locale sans accès réseau
+          # (un « git fetch » échouerait sur un dépôt privé, les identifiants n'étant pas conservés).
+          git branch --force "${BASE_REF}" "origin/${BASE_REF}"
+          # --standalone : serveur privé qui lit CET environnement (pas de service d'arrière-plan en CI).
+          # Agent introuvable : OpenCode 2.x échoue (« Agent not found ») ; le job échoue avec lui.
+          if ! opencode run --standalone --agent reviewer \
+            "Relis le diff ${BASE_REF}...HEAD selon la skill revue-pr. Rapports des scans CI à confronter : .rapports/semgrep.json, .rapports/gitleaks.json, .rapports/trivy.json. Rapport Markdown uniquement." \
+            < /dev/null > review.md 2> opencode.log; then
+            echo "::error::la revue IA a échoué : voir opencode.log"; cat opencode.log; exit 1
+          fi
+      - name: Publier le rapport en commentaire de PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr comment "${PR}" --body-file review.md
+
+  quality-gate:
+    name: Quality Gate
+    needs: [backend, frontend, securite]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Décision automatique (bloquante)
+        env:
+          BACKEND: ${{ needs.backend.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          SECURITE: ${{ needs.securite.result }}
+          SEMGREP: ${{ needs.securite.outputs.semgrep }}
+          GITLEAKS: ${{ needs.securite.outputs.gitleaks }}
+          TRIVY: ${{ needs.securite.outputs.trivy }}
+        run: |
+          ECHECS=0
+          verifier() { if [ "$2" = "$3" ]; then echo "OK    $1"; else echo "ÉCHEC $1 (obtenu : ${2:-absent})"; ECHECS=$((ECHECS + 1)); fi; }
+          verifier "Backend build, tests et couverture" "$BACKEND" success
+          verifier "Frontend lint, types, tests, build" "$FRONTEND" success
+          verifier "Job sécurité exécuté" "$SECURITE" success
+          verifier "Semgrep : 0 constat bloquant" "$SEMGREP" 0
+          verifier "Gitleaks : 0 secret" "$GITLEAKS" 0
+          verifier "Trivy : 0 vulnérabilité critique non justifiée" "$TRIVY" 0
+          echo "Quality Gate : ${ECHECS} critère(s) en échec" >> "$GITHUB_STEP_SUMMARY"
+          [ "$ECHECS" -eq 0 ]

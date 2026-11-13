@@ -1,0 +1,57 @@
+package com.neosoft.neoflow.demande;
+
+// Squelette de test MockMvc pour un endpoint NeoFlow (skill api-spring).
+// Remplacer <ACTION>, <CORPS_VALIDE>, <CORPS_INVALIDE> ; garder un test par code HTTP attendu.
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class <ACTION>ControllerTest {
+
+    @Autowired MockMvc mvc;
+
+    @Test
+    void nominal_renvoie_201() throws Exception {
+        mvc.perform(post("/api/demandes").with(httpBasic("alice", "neoflow"))
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    <CORPS_VALIDE>
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.statut").value("BROUILLON"));
+    }
+
+    @Test
+    void corps_invalide_renvoie_400_problem_detail() throws Exception {
+        mvc.perform(post("/api/demandes").with(httpBasic("alice", "neoflow"))
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    <CORPS_INVALIDE>
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void sans_identifiants_renvoie_401() throws Exception {
+        mvc.perform(post("/api/demandes").contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void role_insuffisant_renvoie_403() throws Exception {
+        mvc.perform(post("/api/demandes/1/valider").with(httpBasic("alice", "neoflow")))
+            .andExpect(status().isForbidden());
+    }
+}
