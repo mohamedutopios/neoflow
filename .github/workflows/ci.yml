@@ -1,4 +1,4 @@
-# CI NeoFlow — version J02 : qualité, sécurité, revue IA, Quality Gate.
+# CI NeoFlow — version J02 (v3) : qualité, sécurité, revue IA (rapport en artefact), Quality Gate.
 # Déclencheur pull_request (jamais pull_request_target) : le code d'une PR ne s'exécute jamais
 # avec les secrets du dépôt de base. Le job « quality-gate » est le seul check requis par la
 # protection de branche ; la revue IA est consultative ; un humain fusionne.
@@ -213,6 +213,15 @@ jobs:
             < /dev/null > review.md 2> opencode.log; then
             echo "::error::la revue IA a échoué : voir opencode.log"; cat opencode.log; exit 1
           fi
+      # Rapport IA conservé en artefact (PR et push), journal OpenCode inclus même en cas d'échec.
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: rapport-revue-ia
+          path: |
+            review.md
+            opencode.log
+          if-no-files-found: ignore
       - name: Rapport dans le résumé du run
         run: cat review.md >> "$GITHUB_STEP_SUMMARY"
       # Sur un push vers master, il n'y a pas de PR : le rapport reste dans le résumé du run.
