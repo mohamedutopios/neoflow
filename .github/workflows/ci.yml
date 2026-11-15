@@ -215,7 +215,9 @@ jobs:
           fi
       - name: Rapport dans le résumé du run
         run: cat review.md >> "$GITHUB_STEP_SUMMARY"
+      # Sur un push vers master, il n'y a pas de PR : le rapport reste dans le résumé du run.
       - name: Publier le rapport en commentaire de PR
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
